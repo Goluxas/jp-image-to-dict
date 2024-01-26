@@ -3,13 +3,14 @@ from PIL import ImageGrab
 
 from pathlib import Path
 from io import BytesIO
+import webbrowser
 
 
-def get_text(image: vision.Image):
+def get_text(image: vision.Image) -> str:
     """
     Using Google Cloud Vision API, find the full text in the image and its bounding box.
 
-    Currently prints to stdout.
+    Currently prints to stdout and returns the text as string.
     """
 
     client = vision.ImageAnnotatorClient()
@@ -32,10 +33,10 @@ def get_text(image: vision.Image):
     # The full parsed text in index 0
     print(texts[0].description)
 
-    # Following units are grouped by the engine's best guess.
+    # Units are grouped by the engine's best guess in indices 1+.
     # In the manga page sample, it does a pretty good job of following page and speech bubble flow
     # but furigana is pulled to its own unit preceding the normal-size text.
-    texts[1].description
+    # texts[1].description
 
     # Alternatively, the text is also in
     # text = response.full_text_annotation
@@ -48,6 +49,8 @@ def get_text(image: vision.Image):
             f"({vertex.x}, {vertex.y})" for vertex in texts[0].bounding_poly.vertices
         )
     )
+
+    return texts[0].description
 
 
 def vision_image_from_file(image_path: Path) -> vision.Image:
@@ -92,6 +95,43 @@ def vision_image_from_clipboard() -> vision.Image:
     # return Tk().clipboard_get()
 
 
+def sanitize(text: str) -> str:
+    """
+    Removes newlines and other breaking characters from the string to prep it for URL injection
+    TODO: Probably make it urlsafe encoded
+    """
+    return text.replace("\n", "")
+
+
+def send_text_to_lorenzis_jisho(text: str):
+    """
+    Open Lorenzi's Jisho (a good online Japanese dictionary) with the given text.
+
+    This is a hack solution; I eventually want to integrate something like Lorenzi's sentence analysis
+    into the app itself, as well as dictionary lookups.
+    """
+
+    text = sanitize(text)
+    LORENZI_SEARCH_URL = "https://jisho.hlorenzi.com/search/%s"
+
+    search_url = LORENZI_SEARCH_URL % text
+
+    webbrowser.open(search_url, new=2, autoraise=True)
+
+
+def send_text_to_deepl(text: str):
+    """
+    For fun, trying out sending the text to DeepL for automatic translation
+    """
+
+    text = sanitize(text)
+    DEEPL_TRANSLATE_URL = "https://www.deepl.com/en/translator#ja/en/%s"
+
+    translate_url = DEEPL_TRANSLATE_URL % text
+
+    webbrowser.open(translate_url, new=2, autoraise=True)
+
+
 # Main function included only for manual testing purposes
 if __name__ == "__main__":
     # Vision Image from path
@@ -101,4 +141,6 @@ if __name__ == "__main__":
     # Vision Image from clipboard (must be in clipboard already when program is run)
     image = vision_image_from_clipboard()
 
-    get_text(image)
+    image_text = get_text(image)
+    # send_text_to_lorenzis_jisho(image_text)
+    send_text_to_deepl(image_text)
