@@ -134,6 +134,13 @@ def send_text_to_deepl(text: str):
 
 # Main function included only for manual testing purposes
 if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("-t", "--translate", action="store_true")
+
+    args = parser.parse_args()
+
     # Vision Image from path
     # image_path = Path("test_images/DLRAW.NET-0125.jpg")
     # image = vision_image_from_file(image_path)
@@ -142,5 +149,7 @@ if __name__ == "__main__":
     image = vision_image_from_clipboard()
 
     image_text = get_text(image)
-    # send_text_to_lorenzis_jisho(image_text)
-    send_text_to_deepl(image_text)
+    if args.translate:
+        send_text_to_deepl(image_text)
+    else:
+        send_text_to_lorenzis_jisho(image_text)
