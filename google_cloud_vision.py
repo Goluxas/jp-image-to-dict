@@ -8,7 +8,9 @@ from io import BytesIO
 def get_text(image: vision.Image):
     client = vision.ImageAnnotatorClient()
 
-    response: vision.AnnotateImageResponse = client.text_detection(image=image)
+    response: vision.AnnotateImageResponse = client.text_detection(
+        image=image, image_context={"language_hints": ["ja"]}
+    )
 
     # import pdb
 
