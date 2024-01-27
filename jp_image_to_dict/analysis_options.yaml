@@ -1,1 +1,8 @@
 include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # The following are turned off for prototyping. Should re-enable before going production
+    avoid_print: False
+    prefer_const_constructors: False
+    prefer_const_literals_to_create_immutables: False
