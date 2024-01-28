@@ -1,10 +1,28 @@
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from PIL import UnidentifiedImageError
 
 from google_cloud_vision import vision_image_from_bytes, get_text
 
 app = FastAPI()
+
+# BAD: If the incoming request uses a port, it must be specified.
+# But Flutter uses a port range on every request so we need more flexibility.
+# origins = ["http://localhost", "https://localhost"]
+
+# BAD: Cannot use wildcards in these origins, use allow_origin_regex instead. (Note the lack of pluriality)
+# origins = ["http://localhost:*", "https://localhost:*"]
+
+origin_regex = r"http://localhost:\d{1,5}"
+
+app.add_middleware(
+    CORSMiddleware,
+    # allow_origins=origins,
+    allow_origin_regex=origin_regex,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")

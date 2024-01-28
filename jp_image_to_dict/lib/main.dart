@@ -100,8 +100,24 @@ class AppState extends ChangeNotifier {
     final response = await http.Response.fromStream(await request.send());
     */
 
+    /*
+    Debugging
+
+    Have tried the following:
+
+    https -> http, now the backend responds positively to the request but front still gets exception
+    Uri.parse() -> Uri.http(), no change
+    Enabling CORS in backend for localhost:* on http and https, no change
+    */
+
     print("Pre request");
-    final response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
+    http.Response response;
+    try {
+      response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
+    } on http.ClientException catch (e) {
+      print("API Call Exception: $e");
+      return "";
+    }
     print("Post response");
 
     if (response.statusCode == 200) {
