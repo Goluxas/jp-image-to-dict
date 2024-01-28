@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import UnidentifiedImageError
 
@@ -43,13 +43,10 @@ async def ocr_png(file: Annotated[bytes, File()]):
     try:
         vimage = vision_image_from_bytes(file)
     except UnidentifiedImageError:
-        # TODO: What's the FastAPI-ic way to return an error message here?
-        return {
-            "error": {
-                "code": 1,
-                "description": "Image file is an unknown format, corrupt, or incomplete.",
-            }
-        }
+        raise HTTPException(
+            status_code=422,
+            detail="Image file is an unknown format, corrupt, or incomplete.",
+        )
 
     captured_text = get_text(vimage)
 
