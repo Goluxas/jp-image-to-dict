@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,8 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pasteboard/pasteboard.dart';
+import 'package:googleapis/vision/v1.dart' as vs;
+import 'package:googleapis_auth/auth_io.dart';
 
 void main() {
   runApp(const MainApp());
@@ -45,11 +48,53 @@ class MainApp extends StatelessWidget {
   }
 }
 
+Future<void> testVisionApi(Uint8List imagePngBytes) async {
+  print("connecting to Cloud Vision API");
+  final httpClient = await clientViaApplicationDefaultCredentials(
+      scopes: [vs.VisionApi.cloudVisionScope]);
+
+  vs.Image image = vs.Image();
+  image.contentAsBytes = imagePngBytes;
+
+  try {
+    final vision = vs.VisionApi(httpClient);
+
+    var request = vs.AnnotateImageRequest(
+      features: [vs.Feature(type: "TEXT_DETECTION")],
+      image: image,
+      imageContext: vs.ImageContext(languageHints: ["ja"]),
+    );
+    var batchRequest = vs.BatchAnnotateImagesRequest(requests: [request]);
+
+    print("sending request");
+    vs.BatchAnnotateImagesResponse response =
+        await vision.images.annotate(batchRequest);
+    print("response:");
+
+    if (response.responses != null && response.responses!.isNotEmpty) {
+      for (vs.AnnotateImageResponse resp in response.responses!) {
+        if (resp.error != null && resp.error?.code != 0) {
+          // TODO: Handle the error better than this
+          print(resp.error!.code);
+          print(resp.error!.message);
+          print(resp.error!.details);
+          continue;
+        }
+
+        print(resp.textAnnotations?[0].description);
+      }
+    }
+  } finally {
+    httpClient.close();
+  }
+}
+
 class AppState extends ChangeNotifier {
   String? capturedText;
   Uint8List? clipImage;
   double? imageHeight;
   Image? image;
+  Uint8List? imagePngBytes;
 
   void captureFromClipboard() async {
     /* Capture Text only
@@ -63,6 +108,12 @@ class AppState extends ChangeNotifier {
       // The Image class returned from this function is not the same as the Image widget from flutter
       var decodedImage = await decodeImageFromList(clipImage!);
       imageHeight = decodedImage.height.toDouble();
+      var pngBytes = await decodedImage.toByteData(format: ImageByteFormat.png);
+
+      // If this doesn't work for invalid image, its likely a matter of Uint size
+      imagePngBytes = pngBytes!.buffer.asUint8List();
+      testVisionApi(imagePngBytes!);
+
       image = Image.memory(clipImage!);
     }
 
@@ -71,20 +122,6 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
   }
-  /*
-    Widget output;
-    double height = 20.0;
-
-    if (appState.clipImage?.isNotEmpty ?? false) {
-      // ! promotes the value to non-nullable since we just checked in the if
-      print("image found and ready to convert from bytes");
-
-      output = Image.memory(appState.clipImage!);
-      height = appState.imageHeight!;
-    } else {
-      output = Placeholder();
-    }
-    */
 }
 
 class ParseImageSection extends StatelessWidget {
