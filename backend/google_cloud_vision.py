@@ -1,5 +1,5 @@
 from google.cloud import vision
-from PIL import ImageGrab
+from PIL import Image, ImageGrab
 
 from pathlib import Path
 from io import BytesIO
@@ -93,6 +93,26 @@ def vision_image_from_clipboard() -> vision.Image:
     # Uses an empty Tkinter widget to pull from clipboard
     # A bit of a hack, but the other way uses pywin32, a 3rd party library that is obviously not cross-platform
     # return Tk().clipboard_get()
+
+
+def vision_image_from_bytes(input_bytes: bytes) -> vision.Image:
+    """
+    Attempts to convert the input file to a PNG (for compression) then to a Vision API Image.
+
+    By using PIL's open we can support many image formats and use it to convert to PNG. Windows screenshots are
+    stored as PNG by default, I think, but can't rely on that. No idea what other OS's do. So this convers some
+    bases.
+    """
+    input = BytesIO(input_bytes)
+
+    # TODO: This can raise PIL.UnidentifiedImageError if the file is an unknown type, incomplete or corrupt
+    # Do we handle that here or trickle up to the caller?
+    image = Image.open(input)
+
+    output = BytesIO()
+    image.save(output, "png")
+
+    return vision.Image(content=output.getvalue())
 
 
 def sanitize(text: str) -> str:
