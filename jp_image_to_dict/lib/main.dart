@@ -24,7 +24,7 @@ class MainApp extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               ParseImageSection(),
-              ImagePreview(),
+              ImagePreviewButton(),
               Divider(thickness: 3.0, color: Theme.of(context).dividerColor),
               Expanded(
                 child: InAppWebView(
@@ -49,6 +49,7 @@ class AppState extends ChangeNotifier {
   String? capturedText;
   Uint8List? clipImage;
   double? imageHeight;
+  Image? image;
 
   void captureFromClipboard() async {
     /* Capture Text only
@@ -59,8 +60,10 @@ class AppState extends ChangeNotifier {
 
     clipImage = await Pasteboard.image;
     if (clipImage?.isNotEmpty ?? false) {
+      // The Image class returned from this function is not the same as the Image widget from flutter
       var decodedImage = await decodeImageFromList(clipImage!);
       imageHeight = decodedImage.height.toDouble();
+      image = Image.memory(clipImage!);
     }
 
     // TODO: Connect with Cloud Vision and send the image off to them
@@ -68,6 +71,20 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
   }
+  /*
+    Widget output;
+    double height = 20.0;
+
+    if (appState.clipImage?.isNotEmpty ?? false) {
+      // ! promotes the value to non-nullable since we just checked in the if
+      print("image found and ready to convert from bytes");
+
+      output = Image.memory(appState.clipImage!);
+      height = appState.imageHeight!;
+    } else {
+      output = Placeholder();
+    }
+    */
 }
 
 class ParseImageSection extends StatelessWidget {
@@ -123,8 +140,8 @@ class ParseImageSection extends StatelessWidget {
   }
 }
 
-class ImagePreview extends StatelessWidget {
-  const ImagePreview({
+class ImagePreviewButton extends StatelessWidget {
+  const ImagePreviewButton({
     super.key,
   });
 
@@ -132,19 +149,72 @@ class ImagePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<AppState>();
 
-    Widget output;
-    double height = 20.0;
+    final bool enabled = appState.clipImage?.isNotEmpty ?? false;
+    final VoidCallback? onPressed = enabled
+        ? () {
+            _showImagePreview(context, appState.image!, appState.imageHeight!);
+          }
+        : null;
 
-    if (appState.clipImage?.isNotEmpty ?? false) {
-      // ! promotes the value to non-nullable since we just checked in the if
-      print("image found and ready to convert from bytes");
+    return FilledButton.tonal(
+      onPressed: onPressed,
+      child: Text("Show Image"),
+    );
+  }
 
-      output = Image.memory(appState.clipImage!);
-      height = appState.imageHeight!;
-    } else {
-      output = Placeholder();
-    }
+  void _showImagePreview(BuildContext context, Image image, double height) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return ImagePreviewDialog(
+          image: image,
+          height: height,
+        );
+      },
+    );
+  }
+}
 
-    return SizedBox(height: height, child: output);
+class ImagePreviewDialog extends StatelessWidget {
+  final Image image;
+  final double height;
+
+  const ImagePreviewDialog({
+    super.key,
+    required this.image,
+    required this.height,
+  });
+
+  // Okay I have to explain here.
+  // The WebView eats clicks within its frame, even though the Dialog pops up over it.
+  // This includes clicking on the close button.
+  // So I make sure to use MainAxisSize.max here because it forces the close button up into the top
+  // of the app, where the web view notably isn't.
+
+  // TODO: When removing the WebView, this can be changed to more closely fit the image, if desired.
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: Icon(Icons.close_sharp),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            SizedBox(height: height, child: image),
+          ],
+        ),
+      ),
+    );
   }
 }
