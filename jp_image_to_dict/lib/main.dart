@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' as http_parser;
 
 import 'package:jp_image_to_dict/constants.dart';
 
@@ -96,12 +97,14 @@ class AppState extends ChangeNotifier {
 
     Tried the following
     Uint8List -> Unit16List, no difference -- reverted
+    add contentType to MultipartFile constructor, no change
     
     ...
     */
     var request = http.MultipartRequest(
         "POST", Uri.http(ApiConstants.baseUrl, ApiConstants.ocrEndpoint))
-      ..files.add(http.MultipartFile.fromBytes("file", pngBytes));
+      ..files.add(http.MultipartFile.fromBytes("file", pngBytes,
+          contentType: http_parser.MediaType('image', 'png')));
 
     http.Response response;
     try {
