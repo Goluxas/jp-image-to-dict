@@ -1,12 +1,15 @@
 // for clipboard text: import 'dart:typed_data';
 import 'dart:ui';
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 
+import 'package:provider/provider.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pasteboard/pasteboard.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:jp_image_to_dict/constants.dart';
 
 void main() {
   runApp(const MainApp());
@@ -69,14 +72,47 @@ class AppState extends ChangeNotifier {
 
       // If this doesn't work for invalid image, its likely a matter of Uint size
       imagePngBytes = pngBytes!.buffer.asUint8List();
+      capturedText = await _ocrImage(imagePngBytes!);
 
       image = Image.memory(clipImage!);
     }
 
     // TODO: Connect with Cloud Vision and send the image off to them
-    capturedText = "<Not Yet Implemented>";
+    //capturedText = "<Not Yet Implemented>";
 
     notifyListeners();
+  }
+
+  Future<String> _ocrImage(Uint8List pngBytes) async {
+    /* Did not work. http has a different way to send multipart requests.
+    final response = await http.post(
+      Uri.parse(ApiConstants.baseUrl + ApiConstants.ocrEndpoint),
+      body: pngBytes,
+      headers: {"Content-Type": "multipart/form-data"},
+    );
+    */
+
+    /*
+    var request = http.MultipartRequest(
+        "POST", Uri.parse(ApiConstants.baseUrl + ApiConstants.ocrEndpoint))
+      ..files.add(http.MultipartFile.fromBytes("file", pngBytes));
+
+    final response = await http.Response.fromStream(await request.send());
+    */
+
+    print("Pre request");
+    final response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
+    print("Post response");
+
+    if (response.statusCode == 200) {
+      // TODO: Replace this with a class that converts the JSON response to an object
+      // Will want that when the response later includes analysis, bounding boxes, etc.
+      //return jsonDecode(response.body)["converted_text"];
+      print("Response received and good");
+      return jsonDecode(response.body)["message"];
+    } else {
+      throw Exception("Error received from API");
+    }
   }
 }
 
