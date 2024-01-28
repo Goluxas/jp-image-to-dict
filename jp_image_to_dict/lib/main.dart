@@ -93,39 +93,37 @@ class AppState extends ChangeNotifier {
     */
 
     /*
-    var request = http.MultipartRequest(
-        "POST", Uri.parse(ApiConstants.baseUrl + ApiConstants.ocrEndpoint))
-      ..files.add(http.MultipartFile.fromBytes("file", pngBytes));
-
-    final response = await http.Response.fromStream(await request.send());
-    */
-
-    /*
     Debugging
 
-    Have tried the following:
+    PIL doesn't like the image format.
 
-    https -> http, now the backend responds positively to the request but front still gets exception
-    Uri.parse() -> Uri.http(), no change
-    Enabling CORS in backend for localhost:* on http and https, no change
+    Tried the following
+    ...
     */
+    var request = http.MultipartRequest(
+        "POST", Uri.http(ApiConstants.baseUrl, ApiConstants.ocrEndpoint))
+      ..files.add(http.MultipartFile.fromBytes("file", pngBytes));
 
-    print("Pre request");
     http.Response response;
     try {
-      response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
+      response = await http.Response.fromStream(await request.send());
+      // response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
     } on http.ClientException catch (e) {
       print("API Call Exception: $e");
       return "";
     }
-    print("Post response");
 
     if (response.statusCode == 200) {
       // TODO: Replace this with a class that converts the JSON response to an object
       // Will want that when the response later includes analysis, bounding boxes, etc.
-      //return jsonDecode(response.body)["converted_text"];
-      print("Response received and good");
-      return jsonDecode(response.body)["message"];
+      final body = response.body;
+      final decoded = jsonDecode(response.body);
+      final text = decoded["converted_text"];
+      print("Body:\n$body\n\nDecoded:\n$decoded\n\nText:\n$text");
+
+      return jsonDecode(response.body)["converted_text"];
+      //print("Response received and good");
+      //return jsonDecode(response.body)["message"];
     } else {
       throw Exception("Error received from API");
     }
