@@ -1,4 +1,4 @@
-// for clipboard text: import 'dart:typed_data';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -77,9 +77,6 @@ class AppState extends ChangeNotifier {
       image = Image.memory(clipImage!);
     }
 
-    // TODO: Connect with Cloud Vision and send the image off to them
-    //capturedText = "<Not Yet Implemented>";
-
     notifyListeners();
   }
 
@@ -98,6 +95,8 @@ class AppState extends ChangeNotifier {
     PIL doesn't like the image format.
 
     Tried the following
+    Uint8List -> Unit16List, no difference -- reverted
+    
     ...
     */
     var request = http.MultipartRequest(
