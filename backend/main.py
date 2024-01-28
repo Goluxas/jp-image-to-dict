@@ -3,7 +3,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import UnidentifiedImageError
 
-from google_cloud_vision import vision_image_from_bytes, get_text
+from google_cloud_vision import vision_image_from_file, get_text
 
 app = FastAPI()
 
@@ -37,11 +37,13 @@ async def root():
 # Later, this backend should do the analysis and dictionary lookup and send that as an object too.
 # Also need a way to communicate errors to Flutter
 @app.post("/ocr/png/")
-async def ocr_png(file: Annotated[bytes, File()]):
+async def ocr_png(file: UploadFile):
     # NOTE: MIGHT want to switch to UploadFile, which spools to a file on disk if memory gets too full
     # Safer for high volume requests. Not necessary for my personal use.
     try:
-        vimage = vision_image_from_bytes(file)
+        # UploadFile.file is the actual file-like object
+        # OPTIMIZATION: If the UploadFile is already png then this unnecessarily un and recompresses it.
+        vimage = vision_image_from_file(file.file)
     except UnidentifiedImageError:
         raise HTTPException(
             status_code=422,

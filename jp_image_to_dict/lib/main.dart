@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -82,33 +83,16 @@ class AppState extends ChangeNotifier {
   }
 
   Future<String> _ocrImage(Uint8List pngBytes) async {
-    /* Did not work. http has a different way to send multipart requests.
-    final response = await http.post(
-      Uri.parse(ApiConstants.baseUrl + ApiConstants.ocrEndpoint),
-      body: pngBytes,
-      headers: {"Content-Type": "multipart/form-data"},
-    );
-    */
-
-    /*
-    Debugging
-
-    PIL doesn't like the image format.
-
-    Tried the following
-    Uint8List -> Unit16List, no difference -- reverted
-    add contentType to MultipartFile constructor, no change
-    
-    ...
-    */
     var request = http.MultipartRequest(
         "POST", Uri.http(ApiConstants.baseUrl, ApiConstants.ocrEndpoint))
       ..files.add(http.MultipartFile.fromBytes("file", pngBytes,
+          filename: "upload.png",
           contentType: http_parser.MediaType('image', 'png')));
 
     http.Response response;
     try {
-      response = await http.Response.fromStream(await request.send());
+      var streamResp = await request.send();
+      response = await http.Response.fromStream(streamResp);
       // response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
     } on http.ClientException catch (e) {
       print("API Call Exception: $e");
@@ -118,14 +102,11 @@ class AppState extends ChangeNotifier {
     if (response.statusCode == 200) {
       // TODO: Replace this with a class that converts the JSON response to an object
       // Will want that when the response later includes analysis, bounding boxes, etc.
-      final body = response.body;
-      final decoded = jsonDecode(response.body);
-      final text = decoded["converted_text"];
-      print("Body:\n$body\n\nDecoded:\n$decoded\n\nText:\n$text");
+      final decoded =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final text = decoded["captured_text"];
 
-      return jsonDecode(response.body)["converted_text"];
-      //print("Response received and good");
-      //return jsonDecode(response.body)["message"];
+      return text;
     } else {
       throw Exception("Error received from API");
     }

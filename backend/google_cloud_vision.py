@@ -53,7 +53,7 @@ def get_text(image: vision.Image) -> str:
     return texts[0].description
 
 
-def vision_image_from_file(image_path: Path) -> vision.Image:
+def vision_image_from_path(image_path: Path) -> vision.Image:
     """
     Read in an image file and convert to a vision.Image ready for the Cloud Vision API
     """
@@ -113,6 +113,17 @@ def vision_image_from_bytes(input_bytes: bytes) -> vision.Image:
     image.save(output, "png")
 
     return vision.Image(content=output.getvalue())
+
+
+def vision_image_from_file(fp) -> vision.Image:
+    """
+    Reads a file-like object into a PNG-compressed Vision Image.
+    """
+    image = Image.open(fp)
+    png_bytes = BytesIO()
+    image.save(png_bytes, "png")
+
+    return vision.Image(content=png_bytes.getvalue())
 
 
 def sanitize(text: str) -> str:
