@@ -1,2 +1,4 @@
 test_images/*
 .venv
+
+__pycache__
