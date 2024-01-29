@@ -14,11 +14,15 @@ app = FastAPI()
 # BAD: Cannot use wildcards in these origins, use allow_origin_regex instead. (Note the lack of pluriality)
 # origins = ["http://localhost:*", "https://localhost:*"]
 
+# DEBUGGING
+# Can use both together. The regex is failing me (even though direct testing shows it works)
+# so why not try both
+origins = ["https://goluxas.github.io"]
 origin_regex = r"https?:\/\/(localhost|goluxas\.github\.io)(:\d{1,5})?"
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=origins,
+    allow_origins=origins,
     allow_origin_regex=origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
