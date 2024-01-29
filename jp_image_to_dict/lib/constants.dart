@@ -1,5 +1,7 @@
 class ApiConstants {
-  static String baseUrl = "localhost:8000";
+  // My PC static String baseUrl = "minecraft.goluxas.com:8221";
+  // Render Host
+  static String baseUrl = "jp-image-to-dict.onrender.com";
   static String ocrEndpoint = "/ocr/png/";
 }
 
