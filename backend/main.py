@@ -45,6 +45,7 @@ async def ocr_png(file: UploadFile):
     Sends the file off to the OCR engine and processes the response for frontend use.
     For the time being, that means only the full captured text as a string.
     """
+    print("Received OCR Request.")
 
     try:
         # UploadFile.file is the actual file-like object
@@ -56,6 +57,7 @@ async def ocr_png(file: UploadFile):
             detail="Image file is an unknown format, corrupt, or incomplete.",
         )
 
+    print("Awaiting response from Vision API...")
     captured_text = get_text(vimage)
 
     return {"captured_text": captured_text}
