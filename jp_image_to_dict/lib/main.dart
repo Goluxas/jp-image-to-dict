@@ -22,8 +22,10 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var appState = AppState();
+
     return ChangeNotifierProvider(
-      create: (context) => AppState(),
+      create: (context) => appState,
       child: MaterialApp(
         home: Scaffold(
           body: Column(
@@ -37,6 +39,9 @@ class MainApp extends StatelessWidget {
                   initialUrlRequest: URLRequest(
                       url: WebUri("https://jisho.hlorenzi.com/search/test"),
                       method: "GET"),
+                  onWebViewCreated: (controller) {
+                    appState.webViewController = controller;
+                  },
                 ),
                 /*child: Placeholder(
                   child: Text("Web View Here"),
@@ -58,14 +63,18 @@ class AppState extends ChangeNotifier {
   Image? image;
   Uint8List? imagePngBytes;
 
+  InAppWebViewController? webViewController;
+
   void captureFromClipboard() async {
     /* Capture Text only
     ClipboardData? clipboard = await Clipboard.getData('text/plain');
     print(clipboard?.text);
     capturedText = clipboard?.text;
     */
+    final oldText = capturedText;
 
     clipImage = await Pasteboard.image;
+
     if (clipImage?.isNotEmpty ?? false) {
       // The Image class returned from this function is not the same as the Image widget from flutter
       var decodedImage = await decodeImageFromList(clipImage!);
@@ -74,7 +83,17 @@ class AppState extends ChangeNotifier {
 
       // If this doesn't work for invalid image, its likely a matter of Uint size
       imagePngBytes = pngBytes!.buffer.asUint8List();
-      capturedText = await _ocrImage(imagePngBytes!);
+
+      // TODO: Call a function to turn the Spinner state on
+      try {
+        capturedText = await _ocrImage(imagePngBytes!);
+      } finally {
+        // TODO: Call a function to turn the Spinner state off
+      }
+
+      if (capturedText != null && capturedText != oldText) {
+        _navigateWebView(capturedText!);
+      }
 
       image = Image.memory(clipImage!);
     }
@@ -110,6 +129,18 @@ class AppState extends ChangeNotifier {
     } else {
       throw Exception("Error received from API");
     }
+  }
+
+  void _navigateWebView(String capturedText) {
+    // sanitize capturedText
+    final searchUri = WebUri(
+        Constants.lorenziJishoSearchPath + Uri.encodeComponent(capturedText));
+
+    print(searchUri);
+    print(webViewController);
+
+    webViewController?.loadUrl(
+        urlRequest: URLRequest(url: searchUri, method: "GET"));
   }
 }
 
