@@ -14,3 +14,4 @@ jobs:
       - uses: bluefireteam/flutter-gh-pages@v7
         with:
           workingDir: jp_image_to_dict
+          baseHref: /jp-image-to-dict/
