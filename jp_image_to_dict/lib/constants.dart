@@ -12,9 +12,9 @@ class Constants {
 
 class ApiConstants {
   // My PC
-  static const String _localApi = "localhost:8221";
+  static const String _localApi = "http://localhost:8221";
   // Backend hosted on Render
-  static const String _remoteApi = "jp-image-to-dict.onrender.com";
+  static const String _remoteApi = "https://jp-image-to-dict.onrender.com";
 
   static String baseUrl = Constants.isDevelopment ? _localApi : _remoteApi;
   static String ocrEndpoint = "/ocr/png/";

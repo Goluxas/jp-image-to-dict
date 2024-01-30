@@ -189,7 +189,7 @@ class AppState extends ChangeNotifier {
 
   Future<String> _ocrImage(Uint8List pngBytes) async {
     var request = http.MultipartRequest(
-        "POST", Uri.http(ApiConstants.baseUrl, ApiConstants.ocrEndpoint))
+        "POST", Uri.parse(ApiConstants.baseUrl + ApiConstants.ocrEndpoint))
       ..files.add(http.MultipartFile.fromBytes("file", pngBytes,
           filename: "upload.png",
           contentType: http_parser.MediaType('image', 'png')));
