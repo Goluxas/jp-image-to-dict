@@ -1,3 +1,4 @@
+import os
 from typing import Annotated
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,7 +6,7 @@ from PIL import UnidentifiedImageError
 
 from google_cloud_vision import vision_image_from_file, get_text
 
-DEBUG = True
+DEBUG = os.environ.get("IS_DEVELOPMENT", "true") == "true"
 
 app = FastAPI()
 
@@ -51,6 +52,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if DEBUG:
+    print("Debug Mode ON")
 
 
 @app.get("/")
