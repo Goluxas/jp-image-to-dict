@@ -155,7 +155,7 @@ class AppState extends ChangeNotifier {
 
   void updateImageAndResults(Uint8List newBytes) async {
     // First make sure this is a real update
-    if (_oldBytes != null && _oldBytes == newBytes) {
+    if (_oldBytes != null && listEquals(_oldBytes, newBytes)) {
       print("No change in bytes");
       return;
     }
