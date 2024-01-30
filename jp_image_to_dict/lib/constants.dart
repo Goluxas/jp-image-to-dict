@@ -12,7 +12,7 @@ class Constants {
 
 class ApiConstants {
   // My PC
-  static const String _localApi = "http://localhost:8221";
+  static const String _localApi = "http://localhost:8000";
   // Backend hosted on Render
   static const String _remoteApi = "https://jp-image-to-dict.onrender.com";
 
