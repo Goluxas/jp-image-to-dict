@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'dart:convert';
@@ -59,6 +60,7 @@ class MainApp extends StatelessWidget {
 }
 
 void interceptPaste(AppState appState) {
+  print('interceptPaste(): Should be called only once.');
   // When the user presses ctrl+v, intercept that and send the contents to the appState
   final events = ClipboardEvents.instance;
 
@@ -68,16 +70,32 @@ void interceptPaste(AppState appState) {
   }
 
   events.registerPasteEventListener((event) async {
+    print("Called Paste Listener");
+
     final reader = await event.getClipboardReader();
 
     // Super Clipboard does conversion to PNG for us so just update the
     // AppState and let it handle updating its listeners
     if (reader.canProvide(Formats.png)) {
       reader.getFile(Formats.png, (file) {
+        // DEBUGGING, this shit gets called like 5 times on top of itself and breaks everything
+        /*
         file.readAll().then((pngBytes) {
+          pngBytes
           print("This should only trigger once per paste, please.");
           print(pngBytes.length);
           appState.updateImageAndResults(pngBytes);
+        });
+        */
+        print("Inside getFile callback");
+        final stream = file.getStream();
+        appState.pasteSubscription = stream.listen((data) {
+          appState.pasteBuilder.add(data);
+        }, onError: (error) {
+          print("Error while receiving paste.");
+          print(error);
+        }, onDone: () {
+          appState.updateWithPastedFile();
         });
       });
     }
@@ -85,13 +103,33 @@ void interceptPaste(AppState appState) {
 }
 
 class AppState extends ChangeNotifier {
+  Uint8List? _oldBytes;
+  BytesBuilder pasteBuilder = BytesBuilder();
+
   String? capturedText;
   Uint8List? clipImage;
   double? imageHeight;
   Image? image;
   Uint8List? imagePngBytes;
 
+  StreamSubscription<Uint8List>? pasteSubscription;
+
   InAppWebViewController? webViewController;
+
+  void addData(Uint8List newData) {
+    pasteBuilder.add(newData);
+  }
+
+  void updateWithPastedFile() {
+    // get the full pasteData from the builder
+    final pasteData = pasteBuilder.toBytes();
+
+    // update the current image and send it off for capture
+    updateImageAndResults(pasteData);
+
+    // finally reset the pasteBuilder for the next run
+    pasteBuilder = BytesBuilder();
+  }
 
   void captureFromClipboard() async {
     // Firefox and Chrome cannot pull data from clipboard directly.
@@ -116,9 +154,16 @@ class AppState extends ChangeNotifier {
   }
 
   void updateImageAndResults(Uint8List newBytes) async {
+    // First make sure this is a real update
+    if (_oldBytes != null && _oldBytes == newBytes) {
+      print("No change in bytes");
+      return;
+    }
+
+    _oldBytes = newBytes;
     final oldText = capturedText;
 
-    updateImage(newBytes);
+    await updateImage(newBytes);
 
     // TODO: Call a function to turn the Spinner state on
     try {
@@ -130,14 +175,18 @@ class AppState extends ChangeNotifier {
     }
 
     if (capturedText != null && capturedText != oldText) {
-      print("Navigating to Jisho page.");
-      _navigateWebView(capturedText!);
+      if (Constants.allowJishoEmbed) {
+        print("Navigating to Jisho page.");
+        _navigateWebView(capturedText!);
+      } else {
+        print("Would have navigated to Jisho page.");
+      }
     }
 
     notifyListeners();
   }
 
-  void updateImage(Uint8List newBytes) async {
+  Future<void> updateImage(Uint8List newBytes) async {
     // newBytes is expected to be PNG format already
 
     // Need to decode to get height property
