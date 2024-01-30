@@ -90,12 +90,11 @@ class MainApp extends StatelessWidget {
 
 class AppState extends ChangeNotifier {
   Uint8List? _oldBytes;
+  double? imageHeight;
+  Uint8List? imagePngBytes;
+  Image? imageWidget;
 
   String? capturedText;
-  Uint8List? clipImage;
-  double? imageHeight;
-  Image? imageWidget;
-  Uint8List? imagePngBytes;
 
   InAppWebViewController? webViewController;
 
@@ -130,11 +129,10 @@ class AppState extends ChangeNotifier {
     */
 
     // BAD: Firefox and Chrome do not allow direct capture from keyboard. Fails silently.
-    clipImage = await Pasteboard.image;
+    Uint8List? clipImage = await Pasteboard.image;
 
-    if (clipImage != null && clipImage!.isNotEmpty) {
-      var decodedImage = await decodeImageFromList(clipImage!);
-      imageHeight = decodedImage.height.toDouble();
+    if (clipImage != null && clipImage.isNotEmpty) {
+      var decodedImage = await decodeImageFromList(clipImage);
       var pngBytes = await decodedImage.toByteData(format: ImageByteFormat.png);
 
       updateImageAndResults(pngBytes!.buffer.asUint8List());
