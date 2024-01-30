@@ -11,6 +11,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import 'package:jp_image_to_dict/constants.dart';
@@ -76,10 +77,6 @@ class MainApp extends StatelessWidget {
                     appState.webViewController = controller;
                   },
                 ),
-                /*child: Placeholder(
-                  child: Text("Web View Here"),
-                ),
-                */
               ),
             ],
           ),
@@ -179,15 +176,32 @@ class AppState extends ChangeNotifier {
   Future<void> updateImage(Uint8List newBytes) async {
     // Also need to decode to get height property
     // NOTE: The Image class returned from this function is not the same as the Image widget from flutter
-    final decodedImage = await decodeImageFromList(newBytes);
+    //final decodedImage = await decodeImageFromList(newBytes);
+    final decodedImage = img.decodeImage(newBytes);
+    if (decodedImage == null) {
+      addError("Unable to decode bytes.", StackTrace.current);
+      return;
+    }
     final height = decodedImage.height.toDouble();
 
     // Encode newBytes as PNG
     // It may already be a PNG but I don't know how to verify that
     // in a way that doesn't require decoding the whole file anyway
-    imagePngBytes = (await decodedImage.toByteData(format: ImageByteFormat.png))
-        ?.buffer
-        .asUint8List();
+    Uint8List encoded = Uint8List(0);
+    try {
+      //encoded = await decodedImage.toByteData(format: ImageByteFormat.png);
+      encoded = img.encodePng(decodedImage);
+    } catch (error) {
+      addError(error.toString(), StackTrace.current);
+    }
+
+    //imagePngBytes = encoded?.buffer.asUint8List();
+    imagePngBytes = encoded;
+
+    /*
+    addError("Ill-advised printing of bytes: ${encoded?.toString()}",
+        StackTrace.current);
+    */
 
     if (imagePngBytes != null) {
       imageWidget = Image.memory(newBytes);
@@ -276,7 +290,7 @@ class ParseImageSection extends StatelessWidget {
       final picker = ImagePicker();
       Uint8List? imageBytes;
       try {
-      final pickedImage = await picker.pickImage(source: ImageSource.gallery);
+        final pickedImage = await picker.pickImage(source: ImageSource.gallery);
         imageBytes = await pickedImage?.readAsBytes();
       } catch (error) {
         appState.addError(error.toString(), StackTrace.current);
