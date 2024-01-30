@@ -22,10 +22,39 @@ void main() {
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
+  void addPasteListener(AppState appState) {
+    // When the user presses ctrl+v, intercept that and send the contents to the appState
+    final events = ClipboardEvents.instance;
+
+    if (events == null) {
+      // ClipboardEvents only exist on web, so skip this setup
+      return;
+    }
+
+    events.registerPasteEventListener((event) async {
+      final reader = await event.getClipboardReader();
+
+      if (reader.canProvide(Formats.png)) {
+        reader.getFile(
+          Formats.png,
+          (file) {
+            // This callback (onFile) is run every time another chunk of bytes comes through
+            // But the file's stream will also emit all bytes, so we just send it off to
+            // appState to handle stitching the file together.
+            // appState also checks if the stream is new and rejects it if so, keeping us to
+            // processing only the first stream, as we should.
+            appState.processPaste(file.getStream());
+          },
+        );
+      }
+      // TODO: Handle other formats, if only to report to the user the paste was unusable
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     var appState = AppState();
-    interceptPaste(appState);
+    addPasteListener(appState);
 
     return ChangeNotifierProvider(
       create: (context) => appState,
@@ -59,76 +88,35 @@ class MainApp extends StatelessWidget {
   }
 }
 
-void interceptPaste(AppState appState) {
-  print('interceptPaste(): Should be called only once.');
-  // When the user presses ctrl+v, intercept that and send the contents to the appState
-  final events = ClipboardEvents.instance;
-
-  if (events == null) {
-    // ClipboardEvents only exist on web, so skip this setup
-    return;
-  }
-
-  events.registerPasteEventListener((event) async {
-    print("Called Paste Listener");
-
-    final reader = await event.getClipboardReader();
-
-    // Super Clipboard does conversion to PNG for us so just update the
-    // AppState and let it handle updating its listeners
-    if (reader.canProvide(Formats.png)) {
-      reader.getFile(Formats.png, (file) {
-        // DEBUGGING, this shit gets called like 5 times on top of itself and breaks everything
-        /*
-        file.readAll().then((pngBytes) {
-          pngBytes
-          print("This should only trigger once per paste, please.");
-          print(pngBytes.length);
-          appState.updateImageAndResults(pngBytes);
-        });
-        */
-        print("Inside getFile callback");
-        final stream = file.getStream();
-        appState.pasteSubscription = stream.listen((data) {
-          appState.pasteBuilder.add(data);
-        }, onError: (error) {
-          print("Error while receiving paste.");
-          print(error);
-        }, onDone: () {
-          appState.updateWithPastedFile();
-        });
-      });
-    }
-  });
-}
-
 class AppState extends ChangeNotifier {
   Uint8List? _oldBytes;
-  BytesBuilder pasteBuilder = BytesBuilder();
 
   String? capturedText;
   Uint8List? clipImage;
   double? imageHeight;
-  Image? image;
+  Image? imageWidget;
   Uint8List? imagePngBytes;
-
-  StreamSubscription<Uint8List>? pasteSubscription;
 
   InAppWebViewController? webViewController;
 
-  void addData(Uint8List newData) {
-    pasteBuilder.add(newData);
-  }
+  bool _receivingPaste = false;
 
-  void updateWithPastedFile() {
-    // get the full pasteData from the builder
-    final pasteData = pasteBuilder.toBytes();
+  Future<void> processPaste(Stream<Uint8List> pasteStream) async {
+    if (_receivingPaste) {
+      // Already received this stream and am still processing it.
+      return;
+    }
 
-    // update the current image and send it off for capture
-    updateImageAndResults(pasteData);
+    _receivingPaste = true;
+    final pasteBuilder = BytesBuilder();
 
-    // finally reset the pasteBuilder for the next run
-    pasteBuilder = BytesBuilder();
+    await for (final data in pasteStream) {
+      pasteBuilder.add(data);
+    }
+
+    _receivingPaste = false;
+    print("Updating with pasted file.");
+    updateImageAndResults(pasteBuilder.toBytes());
   }
 
   void captureFromClipboard() async {
@@ -190,13 +178,15 @@ class AppState extends ChangeNotifier {
     // newBytes is expected to be PNG format already
 
     // Need to decode to get height property
-    // The Image class returned from this function is not the same as the Image widget from flutter
+    // NOTE: The Image class returned from this function is not the same as the Image widget from flutter
     final decodedImage = await decodeImageFromList(newBytes);
     final height = decodedImage.height.toDouble();
 
     imagePngBytes = newBytes;
-    image = Image.memory(newBytes);
+    imageWidget = Image.memory(newBytes);
     imageHeight = height;
+
+    notifyListeners();
   }
 
   Future<String> _ocrImage(Uint8List pngBytes) async {
@@ -233,9 +223,6 @@ class AppState extends ChangeNotifier {
     // sanitize capturedText
     final searchUri = WebUri(
         Constants.lorenziJishoSearchPath + Uri.encodeComponent(capturedText));
-
-    print(searchUri);
-    print(webViewController);
 
     webViewController?.loadUrl(
         urlRequest: URLRequest(url: searchUri, method: "GET"));
@@ -304,10 +291,11 @@ class ImagePreviewButton extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<AppState>();
 
-    final bool enabled = appState.image != null;
+    final bool enabled = appState.imageWidget != null;
     final VoidCallback? onPressed = enabled
         ? () {
-            _showImagePreview(context, appState.image!, appState.imageHeight!);
+            _showImagePreview(
+                context, appState.imageWidget!, appState.imageHeight!);
           }
         : null;
 
