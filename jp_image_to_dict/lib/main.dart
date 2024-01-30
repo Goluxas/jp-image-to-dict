@@ -11,6 +11,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
+import 'package:image_picker/image_picker.dart';
 
 import 'package:jp_image_to_dict/constants.dart';
 import 'package:super_clipboard/super_clipboard.dart';
@@ -173,18 +174,24 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateImage(Uint8List newBytes) async {
-    // newBytes is expected to be PNG format already
-
-    // Need to decode to get height property
+    // Also need to decode to get height property
     // NOTE: The Image class returned from this function is not the same as the Image widget from flutter
     final decodedImage = await decodeImageFromList(newBytes);
     final height = decodedImage.height.toDouble();
 
-    imagePngBytes = newBytes;
-    imageWidget = Image.memory(newBytes);
-    imageHeight = height;
+    // Encode newBytes as PNG
+    // It may already be a PNG but I don't know how to verify that
+    // in a way that doesn't require decoding the whole file anyway
+    imagePngBytes = (await decodedImage.toByteData(format: ImageByteFormat.png))
+        ?.buffer
+        .asUint8List();
 
-    notifyListeners();
+    if (imagePngBytes != null) {
+      imageWidget = Image.memory(newBytes);
+      imageHeight = height;
+
+      notifyListeners();
+    }
   }
 
   Future<String> _ocrImage(Uint8List pngBytes) async {
@@ -236,8 +243,9 @@ class ParseImageSection extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<AppState>();
 
+    /*
+    /// Old method: Clicking button pulls from clipboard
     // Only use captureFromClipboard if not web
-    // TODO: This method actually disables the button, which is misleading.
     // Should probably change it from a button to a text display that says Paste Your Image (CTRL+V)
     final VoidCallback? onPressed = kIsWeb
         ? null
@@ -247,6 +255,17 @@ class ParseImageSection extends StatelessWidget {
 
             appState.captureFromClipboard();
           };
+    */
+
+    Future<void> onPressed() async {
+      final picker = ImagePicker();
+      final pickedImage = await picker.pickImage(source: ImageSource.gallery);
+      final imageBytes = await pickedImage?.readAsBytes();
+
+      if (imageBytes != null) {
+        appState.updateImageAndResults(imageBytes);
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
