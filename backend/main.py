@@ -1,9 +1,11 @@
 from typing import Annotated
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import UnidentifiedImageError
 
 from google_cloud_vision import vision_image_from_file, get_text
+
+DEBUG = True
 
 app = FastAPI()
 
@@ -29,6 +31,17 @@ origins = [
 # Localhost with all its ports because Flutter can't seem to make up its mind
 origin_regex = r"https?:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?"
 
+
+@app.middleware("http")
+async def cors_debugging(request: Request, call_next):
+    if DEBUG:
+        origin = request.headers.get("Origin")
+        print(f"{origin=}")
+
+    response = await call_next(request)
+    return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -41,7 +54,9 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "API is online.\nVisit /docs for usage."}
+    return {
+        "message": "API is online.\nVisit /docs for usage.",
+    }
 
 
 # want an endpoint to accept png bytes (however that transfers over API)
