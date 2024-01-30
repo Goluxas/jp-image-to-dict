@@ -26,10 +26,11 @@ origins = [
     "https://goluxas.github.io",
     "http://localhost",
     "http://127.0.0.1",
+    "http://10.0.2.2",
 ]
 
 # Localhost with all its ports because Flutter can't seem to make up its mind
-origin_regex = r"https?:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?"
+origin_regex = r"https?:\/\/(localhost|10\.0\.2\.2)(:\d{1,5})?"
 
 
 @app.middleware("http")
