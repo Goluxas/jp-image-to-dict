@@ -3,11 +3,11 @@ class Constants {
 
   // Defaults to true for safety
   static const bool isDevelopment =
-      String.fromEnvironment("IS_DEVELOPMENT", defaultValue: "true") == "true";
+      bool.fromEnvironment("IS_DEVELOPMENT", defaultValue: true);
 
   // false will stop the app from sending capturedText to the embedded website
   // Useful to give the guy a break while I'm writing broken code
-  static const bool allowJishoEmbed = false;
+  static const bool allowJishoEmbed = !isDevelopment;
 }
 
 class ApiConstants {
