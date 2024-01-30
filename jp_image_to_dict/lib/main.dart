@@ -156,6 +156,9 @@ class AppState extends ChangeNotifier {
     try {
       print("Waiting for OCR Response...");
       capturedText = await _ocrImage(imagePngBytes!);
+    } catch (error) {
+      addError(error.toString(), StackTrace.current);
+      return;
     } finally {
       // TODO: Call a function to turn the Spinner state off
       print("Done.");
@@ -194,7 +197,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<String> _ocrImage(Uint8List pngBytes) async {
+  Future<String?> _ocrImage(Uint8List pngBytes) async {
     var request = http.MultipartRequest(
         "POST", Uri.parse(ApiConstants.baseUrl + ApiConstants.ocrEndpoint))
       ..files.add(http.MultipartFile.fromBytes("file", pngBytes,
@@ -207,8 +210,8 @@ class AppState extends ChangeNotifier {
       response = await http.Response.fromStream(streamResp);
       // response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
     } on http.ClientException catch (e) {
-      print("API Call Exception: $e");
-      return "";
+      addError("API Call Exception: $e", StackTrace.current);
+      return null;
     }
 
     if (response.statusCode == 200) {
@@ -231,6 +234,18 @@ class AppState extends ChangeNotifier {
 
     webViewController?.loadUrl(
         urlRequest: URLRequest(url: searchUri, method: "GET"));
+  }
+
+  String? errorMessage;
+
+  void addError(String error, StackTrace stackTrace) {
+    // Awkward way to report error, repurposing the captured text box
+    // TODO: Use a SnackBar or something
+    capturedText = null;
+    errorMessage = error;
+    print(stackTrace);
+
+    notifyListeners();
   }
 }
 
@@ -259,12 +274,32 @@ class ParseImageSection extends StatelessWidget {
 
     Future<void> onPressed() async {
       final picker = ImagePicker();
+      Uint8List? imageBytes;
+      try {
       final pickedImage = await picker.pickImage(source: ImageSource.gallery);
-      final imageBytes = await pickedImage?.readAsBytes();
+        imageBytes = await pickedImage?.readAsBytes();
+      } catch (error) {
+        appState.addError(error.toString(), StackTrace.current);
+      }
 
       if (imageBytes != null) {
         appState.updateImageAndResults(imageBytes);
+      } else {
+        appState.addError(
+            "Error while receiving image: Image empty.", StackTrace.current);
+        return; // not strictly needed
       }
+      // for testing api access easily
+      // TODO: make an actual function that checks for the response body too, because this misses CORS issues
+      // http.get(Uri.parse(ApiConstants.baseUrl));
+    }
+
+    String displayText() {
+      if (appState.errorMessage != null && appState.capturedText == null) {
+        return appState.errorMessage!;
+      }
+
+      return appState.capturedText ?? "Captured Text Goes Here";
     }
 
     return Padding(
@@ -287,8 +322,8 @@ class ParseImageSection extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
                 child: SizedBox(
                   child: Center(
-                      child: Text(
-                          appState.capturedText ?? "Parsed Text Goes Here")),
+                    child: Text(displayText()),
+                  ),
                 ),
               ),
             ),
