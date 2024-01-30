@@ -322,7 +322,15 @@ class ParseImageSection extends StatelessWidget {
         children: [
           FilledButton.tonal(
             onPressed: onPressed,
-            child: Text("Read Text From Clipboard Image"),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  Icon(Icons.add_photo_alternate),
+                  Text("(or paste)"),
+                ],
+              ),
+            ),
           ),
           Expanded(
             child: Card(
