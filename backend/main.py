@@ -17,13 +17,23 @@ app = FastAPI()
 # Can use both together
 # The regex failed even though I checked the CORSMiddleWare source and did the re.compile and fullmatch the same way and it worked
 # But adding the explicit domain worked
-origins = ["https://goluxas.github.io"]
-origin_regex = r"https?:\/\/(localhost|goluxas\.github\.io)(:\d{1,5})?"
+# origins = ["https://goluxas.github.io"]
+# origin_regex = r"https?:\/\/(localhost|goluxas\.github\.io)(:\d{1,5})?"
+
+origins = [
+    "https://goluxas.github.io",
+    "http://localhost",
+    "http://127.0.0.1",
+]
+
+# Localhost with all its ports because Flutter can't seem to make up its mind
+origin_regex = r"https?:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_origin_regex=origin_regex,
+    # allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
