@@ -15,3 +15,4 @@ jobs:
         with:
           workingDir: jp_image_to_dict
           baseHref: /jp-image-to-dict/
+          customArgs: --dart-define="IS_DEVELOPMENT=false"
