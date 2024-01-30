@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'dart:convert';
@@ -12,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
 
 import 'package:jp_image_to_dict/constants.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 
 void main() {
   runApp(const MainApp());
@@ -20,9 +22,39 @@ void main() {
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
+  void addPasteListener(AppState appState) {
+    // When the user presses ctrl+v, intercept that and send the contents to the appState
+    final events = ClipboardEvents.instance;
+
+    if (events == null) {
+      // ClipboardEvents only exist on web, so skip this setup
+      return;
+    }
+
+    events.registerPasteEventListener((event) async {
+      final reader = await event.getClipboardReader();
+
+      if (reader.canProvide(Formats.png)) {
+        reader.getFile(
+          Formats.png,
+          (file) {
+            // This callback (onFile) is run every time another chunk of bytes comes through
+            // But the file's stream will also emit all bytes, so we just send it off to
+            // appState to handle stitching the file together.
+            // appState also checks if the stream is new and rejects it if so, keeping us to
+            // processing only the first stream, as we should.
+            appState.processPaste(file.getStream());
+          },
+        );
+      }
+      // TODO: Handle other formats, if only to report to the user the paste was unusable
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     var appState = AppState();
+    addPasteListener(appState);
 
     return ChangeNotifierProvider(
       create: (context) => appState,
@@ -57,46 +89,100 @@ class MainApp extends StatelessWidget {
 }
 
 class AppState extends ChangeNotifier {
-  String? capturedText;
-  Uint8List? clipImage;
+  Uint8List? _oldBytes;
   double? imageHeight;
-  Image? image;
   Uint8List? imagePngBytes;
+  Image? imageWidget;
+
+  String? capturedText;
 
   InAppWebViewController? webViewController;
 
+  bool _receivingPaste = false;
+
+  Future<void> processPaste(Stream<Uint8List> pasteStream) async {
+    if (_receivingPaste) {
+      // Already received this stream and am still processing it.
+      return;
+    }
+
+    _receivingPaste = true;
+    final pasteBuilder = BytesBuilder();
+
+    await for (final data in pasteStream) {
+      pasteBuilder.add(data);
+    }
+
+    _receivingPaste = false;
+    print("Updating with pasted file.");
+    updateImageAndResults(pasteBuilder.toBytes());
+  }
+
   void captureFromClipboard() async {
+    // Firefox and Chrome cannot pull data from clipboard directly.
+    // Keeping this method for posterity and for possible later native apps.
+
     /* Capture Text only
     ClipboardData? clipboard = await Clipboard.getData('text/plain');
     print(clipboard?.text);
     capturedText = clipboard?.text;
     */
-    final oldText = capturedText;
 
-    clipImage = await Pasteboard.image;
+    // BAD: Firefox and Chrome do not allow direct capture from keyboard. Fails silently.
+    Uint8List? clipImage = await Pasteboard.image;
 
-    if (clipImage?.isNotEmpty ?? false) {
-      // The Image class returned from this function is not the same as the Image widget from flutter
-      var decodedImage = await decodeImageFromList(clipImage!);
-      imageHeight = decodedImage.height.toDouble();
+    if (clipImage != null && clipImage.isNotEmpty) {
+      var decodedImage = await decodeImageFromList(clipImage);
       var pngBytes = await decodedImage.toByteData(format: ImageByteFormat.png);
 
-      // If this doesn't work for invalid image, its likely a matter of Uint size
-      imagePngBytes = pngBytes!.buffer.asUint8List();
-
-      // TODO: Call a function to turn the Spinner state on
-      try {
-        capturedText = await _ocrImage(imagePngBytes!);
-      } finally {
-        // TODO: Call a function to turn the Spinner state off
-      }
-
-      if (capturedText != null && capturedText != oldText) {
-        _navigateWebView(capturedText!);
-      }
-
-      image = Image.memory(clipImage!);
+      updateImageAndResults(pngBytes!.buffer.asUint8List());
     }
+  }
+
+  void updateImageAndResults(Uint8List newBytes) async {
+    // First make sure this is a real update
+    if (_oldBytes != null && listEquals(_oldBytes, newBytes)) {
+      print("No change in bytes");
+      return;
+    }
+
+    _oldBytes = newBytes;
+    final oldText = capturedText;
+
+    await updateImage(newBytes);
+
+    // TODO: Call a function to turn the Spinner state on
+    try {
+      print("Waiting for OCR Response...");
+      capturedText = await _ocrImage(imagePngBytes!);
+    } finally {
+      // TODO: Call a function to turn the Spinner state off
+      print("Done.");
+    }
+
+    if (capturedText != null && capturedText != oldText) {
+      if (Constants.allowJishoEmbed) {
+        print("Navigating to Jisho page.");
+        _navigateWebView(capturedText!);
+      } else {
+        print("Would have navigated to Jisho page.");
+      }
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> updateImage(Uint8List newBytes) async {
+    // newBytes is expected to be PNG format already
+
+    // Need to decode to get height property
+    // NOTE: The Image class returned from this function is not the same as the Image widget from flutter
+    final decodedImage = await decodeImageFromList(newBytes);
+    final height = decodedImage.height.toDouble();
+
+    imagePngBytes = newBytes;
+    imageWidget = Image.memory(newBytes);
+    imageHeight = height;
 
     notifyListeners();
   }
@@ -136,9 +222,6 @@ class AppState extends ChangeNotifier {
     final searchUri = WebUri(
         Constants.lorenziJishoSearchPath + Uri.encodeComponent(capturedText));
 
-    print(searchUri);
-    print(webViewController);
-
     webViewController?.loadUrl(
         urlRequest: URLRequest(url: searchUri, method: "GET"));
   }
@@ -153,25 +236,25 @@ class ParseImageSection extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<AppState>();
 
+    // Only use captureFromClipboard if not web
+    // TODO: This method actually disables the button, which is misleading.
+    // Should probably change it from a button to a text display that says Paste Your Image (CTRL+V)
+    final VoidCallback? onPressed = kIsWeb
+        ? null
+        : () async {
+            // Only gets text
+            //ClipboardData? clipboard = await Clipboard.getData('text/plain');
+
+            appState.captureFromClipboard();
+          };
+
     return Padding(
       padding: const EdgeInsets.all(12.0),
       child: Row(
         children: [
           FilledButton.tonal(
+            onPressed: onPressed,
             child: Text("Read Text From Clipboard Image"),
-            onPressed: () async {
-              //print("Button pressed");
-              /* Only gets text
-              ClipboardData? clipboard = await Clipboard.getData('text/plain');
-              print(clipboard?.text);
-              */
-
-              appState.captureFromClipboard();
-
-              //final imageBytes = await Pasteboard.image;
-              //print(imageBytes?.length);
-              //print(imageBytes?.toString());
-            },
           ),
           Expanded(
             child: Card(
@@ -206,10 +289,11 @@ class ImagePreviewButton extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<AppState>();
 
-    final bool enabled = appState.clipImage?.isNotEmpty ?? false;
+    final bool enabled = appState.imageWidget != null;
     final VoidCallback? onPressed = enabled
         ? () {
-            _showImagePreview(context, appState.image!, appState.imageHeight!);
+            _showImagePreview(
+                context, appState.imageWidget!, appState.imageHeight!);
           }
         : null;
 
