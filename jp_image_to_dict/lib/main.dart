@@ -56,6 +56,9 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var appState = AppState();
+    // TODO: Remove this. For testing scrolling
+    appState.capturedText =
+        'L\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nN\nG';
     addPasteListener(appState);
 
     return ChangeNotifierProvider(
