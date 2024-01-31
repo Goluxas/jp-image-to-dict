@@ -62,22 +62,12 @@ class MainApp extends StatelessWidget {
       create: (context) => appState,
       child: MaterialApp(
         home: Scaffold(
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          body: ListView(
+            shrinkWrap: true,
             children: <Widget>[
               ParseImageSection(),
-              ImagePreviewButton(),
               Divider(thickness: 3.0, color: Theme.of(context).dividerColor),
-              Expanded(
-                child: InAppWebView(
-                  initialUrlRequest: URLRequest(
-                      url: WebUri("https://jisho.hlorenzi.com/search/test"),
-                      method: "GET"),
-                  onWebViewCreated: (controller) {
-                    appState.webViewController = controller;
-                  },
-                ),
-              ),
+              EmbeddedJisho(),
             ],
           ),
         ),
@@ -86,7 +76,41 @@ class MainApp extends StatelessWidget {
   }
 }
 
+class EmbeddedJisho extends StatelessWidget {
+  const EmbeddedJisho({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+
+    return Container(
+      constraints:
+          // By combining the container's constraints and the child SizedBox's height
+          // we effectively create a box with a height of 800.0 or 80% of the viewport,
+          // whichever is less.
+          // NOTE: I picked 80% of viewport because the embed EATS ALL INPUTS for web users,
+          // which would let them get trapped if they scrolled the ImageParseSection off screen
+          BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+      child: SizedBox(
+        height: 800.0,
+        child: InAppWebView(
+          initialUrlRequest: URLRequest(
+              url: WebUri("https://jisho.hlorenzi.com/search/test"),
+              method: "GET"),
+          onWebViewCreated: (controller) {
+            appState.webViewController = controller;
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class AppState extends ChangeNotifier {
+  bool processing = false;
+
   Uint8List? _oldBytes;
   double? imageHeight;
   Uint8List? imagePngBytes;
@@ -96,7 +120,20 @@ class AppState extends ChangeNotifier {
 
   InAppWebViewController? webViewController;
 
+  String? errorMessage;
+
   bool _receivingPaste = false;
+
+  // These functions are used to turn on/off the progress spinner
+  void _beginProcessing() {
+    processing = true;
+    notifyListeners();
+  }
+
+  void _endProcessing() {
+    processing = false;
+    notifyListeners();
+  }
 
   Future<void> processPaste(Stream<Uint8List> pasteStream) async {
     if (_receivingPaste) {
@@ -104,6 +141,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
+    _beginProcessing();
     _receivingPaste = true;
     final pasteBuilder = BytesBuilder();
 
@@ -125,6 +163,8 @@ class AppState extends ChangeNotifier {
     print(clipboard?.text);
     capturedText = clipboard?.text;
     */
+
+    _beginProcessing();
 
     // BAD: Firefox and Chrome do not allow direct capture from keyboard. Fails silently.
     Uint8List? clipImage = await Pasteboard.image;
@@ -170,6 +210,7 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    _endProcessing();
     notifyListeners();
   }
 
@@ -250,8 +291,6 @@ class AppState extends ChangeNotifier {
         urlRequest: URLRequest(url: searchUri, method: "GET"));
   }
 
-  String? errorMessage;
-
   void addError(String error, StackTrace stackTrace) {
     // Awkward way to report error, repurposing the captured text box
     // TODO: Use a SnackBar or something
@@ -260,6 +299,29 @@ class AppState extends ChangeNotifier {
     print(stackTrace);
 
     notifyListeners();
+  }
+
+  Future<void> handleUpload() async {
+    _beginProcessing();
+
+    final picker = ImagePicker();
+    Uint8List? imageBytes;
+    try {
+      final pickedImage = await picker.pickImage(source: ImageSource.gallery);
+      imageBytes = await pickedImage?.readAsBytes();
+    } catch (error) {
+      addError(error.toString(), StackTrace.current);
+    }
+
+    if (imageBytes != null) {
+      updateImageAndResults(imageBytes);
+    } else {
+      addError("Error while receiving image: Image empty.", StackTrace.current);
+      return;
+    }
+    // for testing api access easily
+    // TODO: make an actual function that checks for the response body too, because this misses CORS issues
+    // http.get(Uri.parse(ApiConstants.baseUrl));
   }
 }
 
@@ -286,67 +348,67 @@ class ParseImageSection extends StatelessWidget {
           };
     */
 
-    Future<void> onPressed() async {
-      final picker = ImagePicker();
-      Uint8List? imageBytes;
-      try {
-        final pickedImage = await picker.pickImage(source: ImageSource.gallery);
-        imageBytes = await pickedImage?.readAsBytes();
-      } catch (error) {
-        appState.addError(error.toString(), StackTrace.current);
-      }
-
-      if (imageBytes != null) {
-        appState.updateImageAndResults(imageBytes);
-      } else {
-        appState.addError(
-            "Error while receiving image: Image empty.", StackTrace.current);
-        return; // not strictly needed
-      }
-      // for testing api access easily
-      // TODO: make an actual function that checks for the response body too, because this misses CORS issues
-      // http.get(Uri.parse(ApiConstants.baseUrl));
+    Future<void> uploadButtonOnPressed() async {
+      appState.handleUpload();
     }
 
-    String displayText() {
-      if (appState.errorMessage != null && appState.capturedText == null) {
-        return appState.errorMessage!;
+    void imagePreviewOnPressed() {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) {
+          return ImagePreviewDialog(
+            imageBytes: appState.imagePngBytes!,
+            height: appState.imageHeight!,
+          );
+        },
+      );
+    }
+
+    Widget cardContents() {
+      if (appState.processing) {
+        return CircularProgressIndicator(value: null);
       }
 
-      return appState.capturedText ?? "Captured Text Goes Here";
+      if (appState.errorMessage != null && appState.capturedText == null) {
+        return Text(appState.errorMessage!);
+      }
+
+      return Text(appState.capturedText ?? "Captured Text Goes Here");
     }
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
-      child: Row(
+      child: Column(
         children: [
-          FilledButton.tonal(
-            onPressed: onPressed,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  Icon(Icons.add_photo_alternate),
-                  Text("(or paste)"),
-                ],
-              ),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              LabeledIconButton(
+                  label: Text("(or paste)"),
+                  icon: Icon(Icons.add_photo_alternate),
+                  onPressed: uploadButtonOnPressed),
+              if (appState.imagePngBytes != null) SizedBox(width: 5.0),
+              if (appState.imagePngBytes != null)
+                LabeledIconButton(
+                  label: Text("Show Image"),
+                  icon: Icon(Icons.photo),
+                  onPressed: imagePreviewOnPressed,
+                ),
+            ],
           ),
-          Expanded(
-            child: Card(
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-                borderRadius: BorderRadius.circular(12.0),
+          SizedBox(height: 5.0),
+          Card(
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outline,
               ),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
-                child: SizedBox(
-                  child: Center(
-                    child: Text(displayText()),
-                  ),
-                ),
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10.0, bottom: 10.0),
+              child: Center(
+                child: cardContents(),
               ),
             ),
           ),
@@ -356,50 +418,42 @@ class ParseImageSection extends StatelessWidget {
   }
 }
 
-class ImagePreviewButton extends StatelessWidget {
-  const ImagePreviewButton({
+class LabeledIconButton extends StatelessWidget {
+  final Text label;
+  final Icon icon;
+  final VoidCallback? onPressed;
+
+  const LabeledIconButton({
     super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<AppState>();
-
-    final bool enabled = appState.imageWidget != null;
-    final VoidCallback? onPressed = enabled
-        ? () {
-            _showImagePreview(
-                context, appState.imageWidget!, appState.imageHeight!);
-          }
-        : null;
-
     return FilledButton.tonal(
       onPressed: onPressed,
-      child: Text("Show Image"),
-    );
-  }
-
-  void _showImagePreview(BuildContext context, Image image, double height) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return ImagePreviewDialog(
-          image: image,
-          height: height,
-        );
-      },
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            icon,
+            label,
+          ],
+        ),
+      ),
     );
   }
 }
 
 class ImagePreviewDialog extends StatelessWidget {
-  final Image image;
+  final Uint8List imageBytes;
   final double height;
 
   const ImagePreviewDialog({
     super.key,
-    required this.image,
+    required this.imageBytes,
     required this.height,
   });
 
@@ -428,7 +482,7 @@ class ImagePreviewDialog extends StatelessWidget {
                 },
               ),
             ),
-            SizedBox(height: height, child: image),
+            SizedBox(height: height, child: Image.memory(imageBytes)),
           ],
         ),
       ),
