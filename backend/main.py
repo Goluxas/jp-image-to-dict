@@ -1,9 +1,12 @@
+import os
 from typing import Annotated
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import UnidentifiedImageError
 
 from google_cloud_vision import vision_image_from_file, get_text
+
+DEBUG = os.environ.get("IS_DEVELOPMENT", "true") == "true"
 
 app = FastAPI()
 
@@ -17,21 +20,48 @@ app = FastAPI()
 # Can use both together
 # The regex failed even though I checked the CORSMiddleWare source and did the re.compile and fullmatch the same way and it worked
 # But adding the explicit domain worked
-origins = ["https://goluxas.github.io"]
-origin_regex = r"https?:\/\/(localhost|goluxas\.github\.io)(:\d{1,5})?"
+# origins = ["https://goluxas.github.io"]
+# origin_regex = r"https?:\/\/(localhost|goluxas\.github\.io)(:\d{1,5})?"
+
+origins = [
+    "https://goluxas.github.io",
+    "http://localhost",
+    "http://127.0.0.1",
+    "http://10.0.2.2",
+]
+
+# Localhost with all its ports because Flutter can't seem to make up its mind
+origin_regex = r"https?:\/\/(localhost|10\.0\.2\.2)(:\d{1,5})?"
+
+
+@app.middleware("http")
+async def cors_debugging(request: Request, call_next):
+    if DEBUG:
+        origin = request.headers.get("Origin")
+        print(f"{origin=}")
+
+    response = await call_next(request)
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_origin_regex=origin_regex,
+    # allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+if DEBUG:
+    print("Debug Mode ON")
+
 
 @app.get("/")
 async def root():
-    return {"message": "API is online.\nVisit /docs for usage."}
+    return {
+        "message": "API is online.\nVisit /docs for usage.",
+    }
 
 
 # want an endpoint to accept png bytes (however that transfers over API)

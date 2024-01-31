@@ -11,6 +11,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' as http_parser;
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 
 import 'package:jp_image_to_dict/constants.dart';
 import 'package:super_clipboard/super_clipboard.dart';
@@ -75,10 +77,6 @@ class MainApp extends StatelessWidget {
                     appState.webViewController = controller;
                   },
                 ),
-                /*child: Placeholder(
-                  child: Text("Web View Here"),
-                ),
-                */
               ),
             ],
           ),
@@ -155,6 +153,9 @@ class AppState extends ChangeNotifier {
     try {
       print("Waiting for OCR Response...");
       capturedText = await _ocrImage(imagePngBytes!);
+    } catch (error) {
+      addError(error.toString(), StackTrace.current);
+      return;
     } finally {
       // TODO: Call a function to turn the Spinner state off
       print("Done.");
@@ -173,21 +174,44 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateImage(Uint8List newBytes) async {
-    // newBytes is expected to be PNG format already
-
-    // Need to decode to get height property
+    // Also need to decode to get height property
     // NOTE: The Image class returned from this function is not the same as the Image widget from flutter
-    final decodedImage = await decodeImageFromList(newBytes);
+    //final decodedImage = await decodeImageFromList(newBytes);
+    final decodedImage = img.decodeImage(newBytes);
+    if (decodedImage == null) {
+      addError("Unable to decode bytes.", StackTrace.current);
+      return;
+    }
     final height = decodedImage.height.toDouble();
 
-    imagePngBytes = newBytes;
-    imageWidget = Image.memory(newBytes);
-    imageHeight = height;
+    // Encode newBytes as PNG
+    // It may already be a PNG but I don't know how to verify that
+    // in a way that doesn't require decoding the whole file anyway
+    Uint8List encoded = Uint8List(0);
+    try {
+      //encoded = await decodedImage.toByteData(format: ImageByteFormat.png);
+      encoded = img.encodePng(decodedImage);
+    } catch (error) {
+      addError(error.toString(), StackTrace.current);
+    }
 
-    notifyListeners();
+    //imagePngBytes = encoded?.buffer.asUint8List();
+    imagePngBytes = encoded;
+
+    /*
+    addError("Ill-advised printing of bytes: ${encoded?.toString()}",
+        StackTrace.current);
+    */
+
+    if (imagePngBytes != null) {
+      imageWidget = Image.memory(newBytes);
+      imageHeight = height;
+
+      notifyListeners();
+    }
   }
 
-  Future<String> _ocrImage(Uint8List pngBytes) async {
+  Future<String?> _ocrImage(Uint8List pngBytes) async {
     var request = http.MultipartRequest(
         "POST", Uri.parse(ApiConstants.baseUrl + ApiConstants.ocrEndpoint))
       ..files.add(http.MultipartFile.fromBytes("file", pngBytes,
@@ -200,8 +224,8 @@ class AppState extends ChangeNotifier {
       response = await http.Response.fromStream(streamResp);
       // response = await http.get(Uri.http(ApiConstants.baseUrl, "/"));
     } on http.ClientException catch (e) {
-      print("API Call Exception: $e");
-      return "";
+      addError("API Call Exception: $e", StackTrace.current);
+      return null;
     }
 
     if (response.statusCode == 200) {
@@ -225,6 +249,18 @@ class AppState extends ChangeNotifier {
     webViewController?.loadUrl(
         urlRequest: URLRequest(url: searchUri, method: "GET"));
   }
+
+  String? errorMessage;
+
+  void addError(String error, StackTrace stackTrace) {
+    // Awkward way to report error, repurposing the captured text box
+    // TODO: Use a SnackBar or something
+    capturedText = null;
+    errorMessage = error;
+    print(stackTrace);
+
+    notifyListeners();
+  }
 }
 
 class ParseImageSection extends StatelessWidget {
@@ -236,8 +272,9 @@ class ParseImageSection extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<AppState>();
 
+    /*
+    /// Old method: Clicking button pulls from clipboard
     // Only use captureFromClipboard if not web
-    // TODO: This method actually disables the button, which is misleading.
     // Should probably change it from a button to a text display that says Paste Your Image (CTRL+V)
     final VoidCallback? onPressed = kIsWeb
         ? null
@@ -247,6 +284,37 @@ class ParseImageSection extends StatelessWidget {
 
             appState.captureFromClipboard();
           };
+    */
+
+    Future<void> onPressed() async {
+      final picker = ImagePicker();
+      Uint8List? imageBytes;
+      try {
+        final pickedImage = await picker.pickImage(source: ImageSource.gallery);
+        imageBytes = await pickedImage?.readAsBytes();
+      } catch (error) {
+        appState.addError(error.toString(), StackTrace.current);
+      }
+
+      if (imageBytes != null) {
+        appState.updateImageAndResults(imageBytes);
+      } else {
+        appState.addError(
+            "Error while receiving image: Image empty.", StackTrace.current);
+        return; // not strictly needed
+      }
+      // for testing api access easily
+      // TODO: make an actual function that checks for the response body too, because this misses CORS issues
+      // http.get(Uri.parse(ApiConstants.baseUrl));
+    }
+
+    String displayText() {
+      if (appState.errorMessage != null && appState.capturedText == null) {
+        return appState.errorMessage!;
+      }
+
+      return appState.capturedText ?? "Captured Text Goes Here";
+    }
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -254,7 +322,15 @@ class ParseImageSection extends StatelessWidget {
         children: [
           FilledButton.tonal(
             onPressed: onPressed,
-            child: Text("Read Text From Clipboard Image"),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  Icon(Icons.add_photo_alternate),
+                  Text("(or paste)"),
+                ],
+              ),
+            ),
           ),
           Expanded(
             child: Card(
@@ -268,8 +344,8 @@ class ParseImageSection extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
                 child: SizedBox(
                   child: Center(
-                      child: Text(
-                          appState.capturedText ?? "Parsed Text Goes Here")),
+                    child: Text(displayText()),
+                  ),
                 ),
               ),
             ),
