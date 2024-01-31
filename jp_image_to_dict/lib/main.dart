@@ -66,7 +66,6 @@ class MainApp extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               ParseImageSection(),
-              ImagePreviewButton(),
               Divider(thickness: 3.0, color: Theme.of(context).dividerColor),
               Expanded(
                 child: InAppWebView(
@@ -318,7 +317,10 @@ class ParseImageSection extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
-      child: Row(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FilledButton.tonal(
             onPressed: onPressed,
@@ -332,8 +334,10 @@ class ParseImageSection extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Card(
+              if (appState.imagePngBytes != null) ImagePreviewButton(),
+            ],
+          ),
+          Card(
               shape: RoundedRectangleBorder(
                 side: BorderSide(
                   color: Theme.of(context).colorScheme.outline,
@@ -349,7 +353,6 @@ class ParseImageSection extends StatelessWidget {
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
