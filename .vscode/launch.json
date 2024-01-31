@@ -30,6 +30,17 @@
             ]
         },
         {
+            "name": "jp_image_to_dict (Android browser)",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "web-server",
+            "toolArgs": [
+                "--dart-define", "IS_MOBILE_TEST=true",
+                "--web-hostname", "0.0.0.0"
+            ]
+        },
+        {
             "name": "jp_image_to_dict (profile mode)",
             "cwd": "jp_image_to_dict",
             "request": "launch",
