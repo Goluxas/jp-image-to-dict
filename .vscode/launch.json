@@ -8,16 +8,26 @@
             "name": "jp_image_to_dict",
             "cwd": "jp_image_to_dict",
             "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "jp_image_to_dict (bother Lorenzi)",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
             "type": "dart",
             "toolArgs": [
                 "--dart-define", "ALLOW_EMBED=true"
             ]
         },
         {
-            "name": "jp_image_to_dict (don't bother Lorenzi)",
+            "name": "jp_image_to_dict (bother Jisho.org)",
             "cwd": "jp_image_to_dict",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define", "ALLOW_EMBED=true",
+                "--dart-define", "USE_JISHO=jisho.org"
+            ]
         },
         {
             "name": "jp_image_to_dict (profile mode)",

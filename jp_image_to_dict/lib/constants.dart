@@ -1,5 +1,16 @@
 class Constants {
-  static String lorenziJishoSearchPath = "https://jisho.hlorenzi.com/search/";
+  static const String _lorenziJishoSearchPath =
+      "https://jisho.hlorenzi.com/search/";
+  static const String _jishoOrgSearchPath = "https://jisho.org/search/";
+
+  static const String useJisho =
+      String.fromEnvironment("USE_JISHO", defaultValue: "lorenzi");
+
+  static String jishoSearchPath = switch (useJisho) {
+    "lorenzi" => _lorenziJishoSearchPath,
+    "jisho.org" => _jishoOrgSearchPath,
+    _ => _lorenziJishoSearchPath,
+  };
 
   // Defaults to true for safety
   static const bool isDevelopment =
@@ -11,7 +22,8 @@ class Constants {
 
   // false will stop the app from sending capturedText to the embedded website
   // Useful to give the guy a break while I'm writing broken code
-  static const bool allowJishoEmbed = !isDevelopment;
+  static const bool allowJishoEmbed =
+      bool.fromEnvironment("ALLOW_EMBED", defaultValue: !isDevelopment);
 }
 
 class ApiConstants {
