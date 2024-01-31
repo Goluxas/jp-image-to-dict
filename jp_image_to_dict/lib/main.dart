@@ -279,6 +279,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> handleUpload() async {
+    _beginProcessing();
+
     final picker = ImagePicker();
     Uint8List? imageBytes;
     try {
@@ -340,12 +342,16 @@ class ParseImageSection extends StatelessWidget {
       );
     }
 
-    String displayText() {
-      if (appState.errorMessage != null && appState.capturedText == null) {
-        return appState.errorMessage!;
+    Widget cardContents() {
+      if (appState.processing) {
+        return CircularProgressIndicator(value: null);
       }
 
-      return appState.capturedText ?? "Captured Text Goes Here";
+      if (appState.errorMessage != null && appState.capturedText == null) {
+        return Text(appState.errorMessage!);
+      }
+
+      return Text(appState.capturedText ?? "Captured Text Goes Here");
     }
 
     return Padding(
@@ -368,6 +374,7 @@ class ParseImageSection extends StatelessWidget {
                 ),
             ],
           ),
+          SizedBox(height: 5.0),
           Card(
             shape: RoundedRectangleBorder(
               side: BorderSide(
@@ -376,11 +383,9 @@ class ParseImageSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(12.0),
             ),
             child: Padding(
-              padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
-              child: SizedBox(
-                child: Center(
-                  child: Text(displayText()),
-                ),
+              padding: const EdgeInsets.only(top: 10.0, bottom: 10.0),
+              child: Center(
+                child: cardContents(),
               ),
             ),
           ),
