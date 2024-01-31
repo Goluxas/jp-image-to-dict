@@ -86,6 +86,8 @@ class MainApp extends StatelessWidget {
 }
 
 class AppState extends ChangeNotifier {
+  bool processing = false;
+
   Uint8List? _oldBytes;
   double? imageHeight;
   Uint8List? imagePngBytes;
@@ -95,7 +97,20 @@ class AppState extends ChangeNotifier {
 
   InAppWebViewController? webViewController;
 
+  String? errorMessage;
+
   bool _receivingPaste = false;
+
+  // These functions are used to turn on/off the progress spinner
+  void _beginProcessing() {
+    processing = true;
+    notifyListeners();
+  }
+
+  void _endProcessing() {
+    processing = false;
+    notifyListeners();
+  }
 
   Future<void> processPaste(Stream<Uint8List> pasteStream) async {
     if (_receivingPaste) {
@@ -103,6 +118,7 @@ class AppState extends ChangeNotifier {
       return;
     }
 
+    _beginProcessing();
     _receivingPaste = true;
     final pasteBuilder = BytesBuilder();
 
@@ -124,6 +140,8 @@ class AppState extends ChangeNotifier {
     print(clipboard?.text);
     capturedText = clipboard?.text;
     */
+
+    _beginProcessing();
 
     // BAD: Firefox and Chrome do not allow direct capture from keyboard. Fails silently.
     Uint8List? clipImage = await Pasteboard.image;
@@ -169,6 +187,7 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    _endProcessing();
     notifyListeners();
   }
 
@@ -249,8 +268,6 @@ class AppState extends ChangeNotifier {
         urlRequest: URLRequest(url: searchUri, method: "GET"));
   }
 
-  String? errorMessage;
-
   void addError(String error, StackTrace stackTrace) {
     // Awkward way to report error, repurposing the captured text box
     // TODO: Use a SnackBar or something
@@ -259,6 +276,27 @@ class AppState extends ChangeNotifier {
     print(stackTrace);
 
     notifyListeners();
+  }
+
+  Future<void> handleUpload() async {
+    final picker = ImagePicker();
+    Uint8List? imageBytes;
+    try {
+      final pickedImage = await picker.pickImage(source: ImageSource.gallery);
+      imageBytes = await pickedImage?.readAsBytes();
+    } catch (error) {
+      addError(error.toString(), StackTrace.current);
+    }
+
+    if (imageBytes != null) {
+      updateImageAndResults(imageBytes);
+    } else {
+      addError("Error while receiving image: Image empty.", StackTrace.current);
+      return;
+    }
+    // for testing api access easily
+    // TODO: make an actual function that checks for the response body too, because this misses CORS issues
+    // http.get(Uri.parse(ApiConstants.baseUrl));
   }
 }
 
@@ -286,25 +324,7 @@ class ParseImageSection extends StatelessWidget {
     */
 
     Future<void> uploadButtonOnPressed() async {
-      final picker = ImagePicker();
-      Uint8List? imageBytes;
-      try {
-        final pickedImage = await picker.pickImage(source: ImageSource.gallery);
-        imageBytes = await pickedImage?.readAsBytes();
-      } catch (error) {
-        appState.addError(error.toString(), StackTrace.current);
-      }
-
-      if (imageBytes != null) {
-        appState.updateImageAndResults(imageBytes);
-      } else {
-        appState.addError(
-            "Error while receiving image: Image empty.", StackTrace.current);
-        return; // not strictly needed
-      }
-      // for testing api access easily
-      // TODO: make an actual function that checks for the response body too, because this misses CORS issues
-      // http.get(Uri.parse(ApiConstants.baseUrl));
+      appState.handleUpload();
     }
 
     void imagePreviewOnPressed() {
