@@ -65,19 +65,21 @@ class MainApp extends StatelessWidget {
       create: (context) => appState,
       child: MaterialApp(
         home: Scaffold(
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          body: ListView(
             children: <Widget>[
               ParseImageSection(),
               Divider(thickness: 3.0, color: Theme.of(context).dividerColor),
-              Expanded(
-                child: InAppWebView(
-                  initialUrlRequest: URLRequest(
-                      url: WebUri("https://jisho.hlorenzi.com/search/test"),
-                      method: "GET"),
-                  onWebViewCreated: (controller) {
-                    appState.webViewController = controller;
-                  },
+              Container(
+                constraints: BoxConstraints(minHeight: 800.0),
+                child: Expanded(
+                  child: InAppWebView(
+                    initialUrlRequest: URLRequest(
+                        url: WebUri("https://jisho.hlorenzi.com/search/test"),
+                        method: "GET"),
+                    onWebViewCreated: (controller) {
+                      appState.webViewController = controller;
+                    },
+                  ),
                 ),
               ),
             ],
