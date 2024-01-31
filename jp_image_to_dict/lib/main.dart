@@ -321,88 +321,113 @@ class ParseImageSection extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FilledButton.tonal(
-            onPressed: onPressed,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  Icon(Icons.add_photo_alternate),
-                  Text("(or paste)"),
-                ],
-              ),
-            ),
-          ),
-              if (appState.imagePngBytes != null) ImagePreviewButton(),
+            children: [
+              LabeledIconButton(
+                  label: "(or paste)",
+                  icon: Icons.add_photo_alternate,
+                  onPressed: onPressed),
+              if (appState.imagePngBytes != null) SizedBox(width: 5.0),
+              if (appState.imagePngBytes != null)
+                ImagePreviewButton(
+                    imageBytes: appState.imagePngBytes!,
+                    imageHeight: appState.imageHeight!),
             ],
           ),
           Card(
-              shape: RoundedRectangleBorder(
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-                borderRadius: BorderRadius.circular(12.0),
+            shape: RoundedRectangleBorder(
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outline,
               ),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
-                child: SizedBox(
-                  child: Center(
-                    child: Text(displayText()),
-                  ),
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 5.0, bottom: 5.0),
+              child: SizedBox(
+                child: Center(
+                  child: Text(displayText()),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );
   }
 }
 
-class ImagePreviewButton extends StatelessWidget {
-  const ImagePreviewButton({
+class LabeledIconButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const LabeledIconButton({
     super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<AppState>();
-
-    final bool enabled = appState.imageWidget != null;
-    final VoidCallback? onPressed = enabled
-        ? () {
-            _showImagePreview(
-                context, appState.imageWidget!, appState.imageHeight!);
-          }
-        : null;
-
     return FilledButton.tonal(
       onPressed: onPressed,
-      child: Text("Show Image"),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            Icon(icon),
+            Text(label),
+          ],
+        ),
+      ),
     );
   }
+}
 
-  void _showImagePreview(BuildContext context, Image image, double height) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return ImagePreviewDialog(
-          image: image,
-          height: height,
-        );
-      },
+class ImagePreviewButton extends StatelessWidget {
+  final Uint8List imageBytes;
+  final double imageHeight;
+
+  const ImagePreviewButton({
+    super.key,
+    required this.imageBytes,
+    required this.imageHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    void imagePreviewOnPressed() {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) {
+          return ImagePreviewDialog(
+            imageBytes: imageBytes,
+            height: imageHeight,
+          );
+        },
+      );
+    }
+
+    return FilledButton.tonal(
+      onPressed: imagePreviewOnPressed,
+      child: Column(
+        children: [
+          Icon(Icons.photo),
+          Text("Show Image"),
+        ],
+      ),
     );
   }
 }
 
 class ImagePreviewDialog extends StatelessWidget {
-  final Image image;
+  final Uint8List imageBytes;
   final double height;
 
   const ImagePreviewDialog({
     super.key,
-    required this.image,
+    required this.imageBytes,
     required this.height,
   });
 
@@ -431,7 +456,7 @@ class ImagePreviewDialog extends StatelessWidget {
                 },
               ),
             ),
-            SizedBox(height: height, child: image),
+            SizedBox(height: height, child: Image.memory(imageBytes)),
           ],
         ),
       ),
