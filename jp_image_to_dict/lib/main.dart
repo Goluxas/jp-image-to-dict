@@ -56,9 +56,6 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var appState = AppState();
-    // TODO: Remove this. For testing scrolling
-    appState.capturedText =
-        'L\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nO\nN\nG';
     addPasteListener(appState);
 
     return ChangeNotifierProvider(
@@ -66,24 +63,45 @@ class MainApp extends StatelessWidget {
       child: MaterialApp(
         home: Scaffold(
           body: ListView(
+            shrinkWrap: true,
             children: <Widget>[
               ParseImageSection(),
               Divider(thickness: 3.0, color: Theme.of(context).dividerColor),
-              Container(
-                constraints: BoxConstraints(minHeight: 800.0),
-                child: Expanded(
-                  child: InAppWebView(
-                    initialUrlRequest: URLRequest(
-                        url: WebUri("https://jisho.hlorenzi.com/search/test"),
-                        method: "GET"),
-                    onWebViewCreated: (controller) {
-                      appState.webViewController = controller;
-                    },
-                  ),
-                ),
-              ),
+              EmbeddedJisho(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class EmbeddedJisho extends StatelessWidget {
+  const EmbeddedJisho({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+
+    return Container(
+      constraints:
+          // By combining the container's constraints and the child SizedBox's height
+          // we effectively create a box with a height of 800.0 or 80% of the viewport,
+          // whichever is less.
+          // NOTE: I picked 80% of viewport because the embed EATS ALL INPUTS for web users,
+          // which would let them get trapped if they scrolled the ImageParseSection off screen
+          BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+      child: SizedBox(
+        height: 800.0,
+        child: InAppWebView(
+          initialUrlRequest: URLRequest(
+              url: WebUri("https://jisho.hlorenzi.com/search/test"),
+              method: "GET"),
+          onWebViewCreated: (controller) {
+            appState.webViewController = controller;
+          },
         ),
       ),
     );
