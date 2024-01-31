@@ -285,7 +285,7 @@ class ParseImageSection extends StatelessWidget {
           };
     */
 
-    Future<void> onPressed() async {
+    Future<void> uploadButtonOnPressed() async {
       final picker = ImagePicker();
       Uint8List? imageBytes;
       try {
@@ -307,6 +307,19 @@ class ParseImageSection extends StatelessWidget {
       // http.get(Uri.parse(ApiConstants.baseUrl));
     }
 
+    void imagePreviewOnPressed() {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) {
+          return ImagePreviewDialog(
+            imageBytes: appState.imagePngBytes!,
+            height: appState.imageHeight!,
+          );
+        },
+      );
+    }
+
     String displayText() {
       if (appState.errorMessage != null && appState.capturedText == null) {
         return appState.errorMessage!;
@@ -323,14 +336,16 @@ class ParseImageSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               LabeledIconButton(
-                  label: "(or paste)",
-                  icon: Icons.add_photo_alternate,
-                  onPressed: onPressed),
+                  label: Text("(or paste)"),
+                  icon: Icon(Icons.add_photo_alternate),
+                  onPressed: uploadButtonOnPressed),
               if (appState.imagePngBytes != null) SizedBox(width: 5.0),
               if (appState.imagePngBytes != null)
-                ImagePreviewButton(
-                    imageBytes: appState.imagePngBytes!,
-                    imageHeight: appState.imageHeight!),
+                LabeledIconButton(
+                  label: Text("Show Image"),
+                  icon: Icon(Icons.photo),
+                  onPressed: imagePreviewOnPressed,
+                ),
             ],
           ),
           Card(
@@ -356,8 +371,8 @@ class ParseImageSection extends StatelessWidget {
 }
 
 class LabeledIconButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
+  final Text label;
+  final Icon icon;
   final VoidCallback? onPressed;
 
   const LabeledIconButton({
@@ -375,47 +390,10 @@ class LabeledIconButton extends StatelessWidget {
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            Icon(icon),
-            Text(label),
+            icon,
+            label,
           ],
         ),
-      ),
-    );
-  }
-}
-
-class ImagePreviewButton extends StatelessWidget {
-  final Uint8List imageBytes;
-  final double imageHeight;
-
-  const ImagePreviewButton({
-    super.key,
-    required this.imageBytes,
-    required this.imageHeight,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    void imagePreviewOnPressed() {
-      showDialog(
-        context: context,
-        barrierDismissible: true,
-        builder: (context) {
-          return ImagePreviewDialog(
-            imageBytes: imageBytes,
-            height: imageHeight,
-          );
-        },
-      );
-    }
-
-    return FilledButton.tonal(
-      onPressed: imagePreviewOnPressed,
-      child: Column(
-        children: [
-          Icon(Icons.photo),
-          Text("Show Image"),
-        ],
       ),
     );
   }
