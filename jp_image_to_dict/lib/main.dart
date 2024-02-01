@@ -97,8 +97,7 @@ class EmbeddedJisho extends StatelessWidget {
         height: 800.0,
         child: InAppWebView(
           initialUrlRequest: URLRequest(
-              url: WebUri("https://jisho.hlorenzi.com/search/test"),
-              method: "GET"),
+              url: WebUri("${Constants.jishoSearchPath}/test"), method: "GET"),
           onWebViewCreated: (controller) {
             appState.webViewController = controller;
           },
@@ -181,6 +180,7 @@ class AppState extends ChangeNotifier {
     // First make sure this is a real update
     if (_oldBytes != null && listEquals(_oldBytes, newBytes)) {
       print("No change in bytes");
+      _endProcessing();
       return;
     }
 
@@ -203,7 +203,6 @@ class AppState extends ChangeNotifier {
 
     if (capturedText != null && capturedText != oldText) {
       if (Constants.allowJishoEmbed) {
-        print("Navigating to Jisho page.");
         _navigateWebView(capturedText!);
       } else {
         print("Would have navigated to Jisho page.");
@@ -282,13 +281,24 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void _navigateWebView(String capturedText) {
+  Future<void> _navigateWebView(String capturedText) async {
     // sanitize capturedText
-    final searchUri = WebUri(
-        Constants.lorenziJishoSearchPath + Uri.encodeComponent(capturedText));
+    final urlsafeCapturedText = Uri.encodeComponent(capturedText);
 
-    webViewController?.loadUrl(
-        urlRequest: URLRequest(url: searchUri, method: "GET"));
+    if (urlsafeCapturedText.length > 6000) {
+      addError("Captured text too long to send to Jisho", StackTrace.current);
+      return;
+    }
+
+    final searchUri = WebUri(Constants.jishoSearchPath + urlsafeCapturedText);
+
+    print("Navigating to Jisho page.");
+    try {
+      await webViewController?.loadUrl(
+          urlRequest: URLRequest(url: searchUri, method: "GET"));
+    } catch (error) {
+      addError(error.toString(), StackTrace.current);
+    }
   }
 
   void addError(String error, StackTrace stackTrace) {

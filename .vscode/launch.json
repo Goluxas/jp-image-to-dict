@@ -1,0 +1,59 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "jp_image_to_dict",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
+            "type": "dart",
+        },
+        {
+            "name": "jp_image_to_dict (bother Lorenzi)",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define", "ALLOW_EMBED=true"
+            ]
+        },
+        {
+            "name": "jp_image_to_dict (bother Jisho.org)",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
+            "type": "dart",
+            "toolArgs": [
+                //"--dart-define", "ALLOW_EMBED=true",
+                //"--dart-define", "USE_JISHO=jisho.org"
+                "--dart-define-from-file", "env/development_pester_jisho_env.json"
+            ]
+        },
+        {
+            "name": "jp_image_to_dict (Android browser)",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "web-server",
+            "toolArgs": [
+                "--dart-define", "USING_API=mobile_test",
+                "--web-hostname", "0.0.0.0"
+            ]
+        },
+        {
+            "name": "jp_image_to_dict (profile mode)",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "jp_image_to_dict (release mode)",
+            "cwd": "jp_image_to_dict",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}
