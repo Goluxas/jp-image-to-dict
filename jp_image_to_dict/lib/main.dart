@@ -97,7 +97,10 @@ class EmbeddedJisho extends StatelessWidget {
         height: 800.0,
         child: InAppWebView(
           initialUrlRequest: URLRequest(
-              url: WebUri("${Constants.jishoSearchPath}/test"), method: "GET"),
+              // Ugly. I should probably not include the trailing slash in the jishoPath
+              // but later I do jishoSearchPath + encodedSearchQuery and it looks cleaner there
+              url: WebUri("${Constants.jishoSearchPath}test"),
+              method: "GET"),
           onWebViewCreated: (controller) {
             appState.webViewController = controller;
           },
