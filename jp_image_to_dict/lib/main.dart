@@ -180,6 +180,7 @@ class AppState extends ChangeNotifier {
     // First make sure this is a real update
     if (_oldBytes != null && listEquals(_oldBytes, newBytes)) {
       print("No change in bytes");
+      _endProcessing();
       return;
     }
 
