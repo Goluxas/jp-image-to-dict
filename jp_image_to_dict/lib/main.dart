@@ -111,7 +111,6 @@ class AppState extends ChangeNotifier {
   bool processing = false;
 
   Uint8List? _oldBytes;
-  double? imageHeight;
   Uint8List? imagePngBytes;
   Image? imageWidget;
 
@@ -214,15 +213,14 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateImage(Uint8List newBytes) async {
-    // Also need to decode to get height property
     // NOTE: The Image class returned from this function is not the same as the Image widget from flutter
+
     //final decodedImage = await decodeImageFromList(newBytes);
     final decodedImage = img.decodeImage(newBytes);
     if (decodedImage == null) {
       addError("Unable to decode bytes.", StackTrace.current);
       return;
     }
-    final height = decodedImage.height.toDouble();
 
     // Encode newBytes as PNG
     // It may already be a PNG but I don't know how to verify that
@@ -238,14 +236,8 @@ class AppState extends ChangeNotifier {
     //imagePngBytes = encoded?.buffer.asUint8List();
     imagePngBytes = encoded;
 
-    /*
-    addError("Ill-advised printing of bytes: ${encoded?.toString()}",
-        StackTrace.current);
-    */
-
     if (imagePngBytes != null) {
       imageWidget = Image.memory(newBytes);
-      imageHeight = height;
 
       notifyListeners();
     }
@@ -369,7 +361,6 @@ class ParseImageSection extends StatelessWidget {
         builder: (context) {
           return ImagePreviewDialog(
             imageBytes: appState.imagePngBytes!,
-            height: appState.imageHeight!,
           );
         },
       );
@@ -459,12 +450,10 @@ class LabeledIconButton extends StatelessWidget {
 
 class ImagePreviewDialog extends StatelessWidget {
   final Uint8List imageBytes;
-  final double height;
 
   const ImagePreviewDialog({
     super.key,
     required this.imageBytes,
-    required this.height,
   });
 
   // Okay I have to explain here.
@@ -481,7 +470,7 @@ class ImagePreviewDialog extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
-          mainAxisSize: MainAxisSize.max,
+          //mainAxisSize: MainAxisSize.max,
           children: [
             Align(
               alignment: Alignment.centerRight,
@@ -492,7 +481,12 @@ class ImagePreviewDialog extends StatelessWidget {
                 },
               ),
             ),
-            SizedBox(height: height, child: Image.memory(imageBytes)),
+            Flexible(
+              child: Image.memory(
+                imageBytes,
+                fit: BoxFit.scaleDown,
+              ),
+            ),
           ],
         ),
       ),
