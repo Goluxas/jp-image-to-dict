@@ -1,4 +1,4 @@
 {
     "IS_DEVELOPMENT": false,
-    "USING_API": "RENDER"
+    "USING_API": "SELFHOSTED"
 }
