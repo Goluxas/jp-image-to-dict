@@ -31,7 +31,7 @@ class ApiConstants {
   static const String _renderApi = "https://jp-image-to-dict.onrender.com";
   // Self-hosted backend
   static const String _selfHostedApi =
-      "http://rattler-adequate-meerkat.ngrok-free.app";
+      "https://rattler-adequate-meerkat.ngrok-free.app";
 
   static const String _defaultApi = _localApi;
   static const String _useApi =
