@@ -372,10 +372,10 @@ class ParseImageSection extends StatelessWidget {
       }
 
       if (appState.errorMessage != null && appState.capturedText == null) {
-        return Text(appState.errorMessage!);
+        return SelectableText(appState.errorMessage!);
       }
 
-      return Text(appState.capturedText ?? "Captured Text Goes Here");
+      return SelectableText(appState.capturedText ?? "Captured Text Goes Here");
     }
 
     return Padding(
