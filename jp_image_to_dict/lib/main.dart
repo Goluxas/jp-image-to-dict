@@ -202,7 +202,9 @@ class AppState extends ChangeNotifier {
 
     if (capturedText != null && capturedText != oldText) {
       if (Constants.allowJishoEmbed) {
-        _navigateWebView(capturedText!);
+        //_navigateWebView(capturedText!);
+        print(
+            "Web view autonavigation temporarily disabled while the Long Text Problem is being fixed.");
       } else {
         print("Would have navigated to Jisho page.");
       }
