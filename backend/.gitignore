@@ -1,5 +1,0 @@
-test_images/*
-.venv
-secrets
-
-__pycache__
