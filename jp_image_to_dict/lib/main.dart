@@ -202,7 +202,9 @@ class AppState extends ChangeNotifier {
 
     if (capturedText != null && capturedText != oldText) {
       if (Constants.allowJishoEmbed) {
-        _navigateWebView(capturedText!);
+        //_navigateWebView(capturedText!);
+        print(
+            "Web view autonavigation temporarily disabled while the Long Text Problem is being fixed.");
       } else {
         print("Would have navigated to Jisho page.");
       }
@@ -372,10 +374,10 @@ class ParseImageSection extends StatelessWidget {
       }
 
       if (appState.errorMessage != null && appState.capturedText == null) {
-        return Text(appState.errorMessage!);
+        return SelectableText(appState.errorMessage!);
       }
 
-      return Text(appState.capturedText ?? "Captured Text Goes Here");
+      return SelectableText(appState.capturedText ?? "Captured Text Goes Here");
     }
 
     return Padding(
@@ -413,6 +415,22 @@ class ParseImageSection extends StatelessWidget {
               ),
             ),
           ),
+          if (appState.imagePngBytes != null)
+            // TODO: Improve this feature and remove this prompt
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [Icon(Icons.arrow_upward), Text("Copy this")],
+                ),
+                Column(
+                  children: [Text("Paste below"), Icon(Icons.arrow_downward)],
+                ),
+                SizedBox(width: 8.0),
+                Text(
+                    "Try to select a few sentences AT MOST. Too much text will break the site."),
+              ],
+            )
         ],
       ),
     );
