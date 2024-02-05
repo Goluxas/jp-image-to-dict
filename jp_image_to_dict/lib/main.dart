@@ -415,6 +415,22 @@ class ParseImageSection extends StatelessWidget {
               ),
             ),
           ),
+          if (appState.imagePngBytes != null)
+            // TODO: Improve this feature and remove this prompt
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [Icon(Icons.arrow_upward), Text("Copy this")],
+                ),
+                Column(
+                  children: [Text("Paste below"), Icon(Icons.arrow_downward)],
+                ),
+                SizedBox(width: 8.0),
+                Text(
+                    "Try to select a few sentences AT MOST. Too much text will break the site."),
+              ],
+            )
         ],
       ),
     );
