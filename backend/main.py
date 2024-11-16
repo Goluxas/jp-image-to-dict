@@ -1,17 +1,17 @@
 import os
-from typing import Annotated
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request
+from fastapi import FastAPI, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import UnidentifiedImageError
-
-from google_cloud_vision import vision_image_from_file, get_text
-from google_cloud_vision import text_from_image as google_cloud_vision_ocr
 
 DEBUG = os.environ.get("IS_DEVELOPMENT", "true") == "true"
 
 app = FastAPI()
 
-ocr = google_cloud_vision_ocr
+# from google_cloud_vision import text_from_image as google_cloud_vision_ocr
+# ocr = google_cloud_vision_ocr
+
+from mangaocr import get_text_from_file as mangaocr_ocr
+
+ocr = mangaocr_ocr
 """
 The OCR engine to use for processing image files.
 
