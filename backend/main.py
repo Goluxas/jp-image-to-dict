@@ -6,10 +6,10 @@ DEBUG = os.environ.get("IS_DEVELOPMENT", "true") == "true"
 
 app = FastAPI()
 
-# from google_cloud_vision import text_from_image as google_cloud_vision_ocr
+# from .ocr_engines.google_cloud_vision import text_from_image as google_cloud_vision_ocr
 # ocr = google_cloud_vision_ocr
 
-from mangaocr import get_text_from_file as mangaocr_ocr
+from .ocr_engines.mangaocr import get_text_from_file as mangaocr_ocr
 
 ocr = mangaocr_ocr
 """

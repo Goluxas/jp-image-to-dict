@@ -1,9 +1,9 @@
 import pytest
-from mangaocr import get_text_from_file
+from ..ocr_engines.mangaocr import get_text_from_file
 
 
 def test_get_text_from_file():
-    # Use a predefined image file
+    # Create a mock file-like object
     test_file = open("test.png", "rb")
 
     # Call the function with the mock file

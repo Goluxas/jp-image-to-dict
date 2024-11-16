@@ -1,10 +1,8 @@
 import manga_ocr
 from typing import IO
-from image_handling import image_to_png_bytes, png_bytes_to_pil_image
+from ..images.image_handling import image_to_png_bytes, png_bytes_to_pil_image
 
 ocr = manga_ocr.MangaOcr()
-
-text = ocr("test.png")
 
 
 def get_text_from_file(file: IO) -> str:
