@@ -1,5 +1,5 @@
 import pytest
-from .mangaocr import get_text_from_file
+from mangaocr import get_text_from_file
 
 
 def test_get_text_from_file():
