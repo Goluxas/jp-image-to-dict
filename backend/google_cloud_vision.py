@@ -1,9 +1,25 @@
 from google.cloud import vision
-from PIL import Image, ImageGrab
-
+from PIL import Image as PILImage, ImageGrab, UnidentifiedImageError
 from pathlib import Path
 from io import BytesIO
 import webbrowser
+from fastapi import HTTPException
+from typing import IO
+
+
+def text_from_image(file: IO) -> str:
+    try:
+        # OPTIMIZATION: If the UploadFile is already png then this unnecessarily un and recompresses it.
+        vimage = vision_image_from_file(file)
+    except UnidentifiedImageError:
+        raise HTTPException(
+            status_code=422,
+            detail="Image file is an unknown format, corrupt, or incomplete.",
+        )
+
+    print("Awaiting response from Vision API...")
+    captured_text = get_text(vimage)
+    return captured_text
 
 
 def get_text(image: vision.Image) -> str:
@@ -16,7 +32,8 @@ def get_text(image: vision.Image) -> str:
     client = vision.ImageAnnotatorClient()
 
     response: vision.AnnotateImageResponse = client.text_detection(
-        image=image, image_context={"language_hints": ["ja"]}
+        image=image,
+        image_context={"language_hints": ["ja"]},
     )
 
     # If there are errors, report and exit
@@ -107,7 +124,7 @@ def vision_image_from_bytes(input_bytes: bytes) -> vision.Image:
 
     # TODO: This can raise PIL.UnidentifiedImageError if the file is an unknown type, incomplete or corrupt
     # Do we handle that here or trickle up to the caller?
-    image = Image.open(input)
+    image = PILImage.open(input)
 
     output = BytesIO()
     image.save(output, "png")
@@ -119,7 +136,7 @@ def vision_image_from_file(fp) -> vision.Image:
     """
     Reads a file-like object into a PNG-compressed Vision Image.
     """
-    image = Image.open(fp)
+    image = PILImage.open(fp)
     png_bytes = BytesIO()
     image.save(png_bytes, "png")
 

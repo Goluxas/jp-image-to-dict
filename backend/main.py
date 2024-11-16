@@ -5,10 +5,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import UnidentifiedImageError
 
 from google_cloud_vision import vision_image_from_file, get_text
+from google_cloud_vision import text_from_image as google_cloud_vision_ocr
 
 DEBUG = os.environ.get("IS_DEVELOPMENT", "true") == "true"
 
 app = FastAPI()
+
+ocr = google_cloud_vision_ocr
+"""
+The OCR engine to use for processing image files.
+
+Expected interface:
+    ocr(file: IO) -> str
+"""
 
 # BAD: If the incoming request uses a port, it must be specified.
 # But Flutter uses a port range on every request so we need more flexibility.
@@ -77,17 +86,6 @@ async def ocr_png(file: UploadFile):
     """
     print("Received OCR Request.")
 
-    try:
-        # UploadFile.file is the actual file-like object
-        # OPTIMIZATION: If the UploadFile is already png then this unnecessarily un and recompresses it.
-        vimage = vision_image_from_file(file.file)
-    except UnidentifiedImageError:
-        raise HTTPException(
-            status_code=422,
-            detail="Image file is an unknown format, corrupt, or incomplete.",
-        )
-
-    print("Awaiting response from Vision API...")
-    captured_text = get_text(vimage)
+    captured_text = ocr(file.file)
 
     return {"captured_text": captured_text}
