@@ -6,25 +6,36 @@ This is a full stack application that aims to allow users to take screenshots or
 
 ## Technologies in Use
 
-* Back End
-    * Python
-    * FastAPI
-    * Google Vision API for OCR
-* Front End
-    * Flutter, targeting web browser
+- Back End
+  - Python
+  - FastAPI
+  - ~~Google Vision API for OCR~~
+  - MangaOCR
+- Front End
+  - Flutter, targeting web browser
 
 ## Feature Roadmap
 
-* [x] Allow user to paste or upload images.
-* [x] Parse text out of screenshots
-* [x] Feed text into an available online dictionary such as Lorenzi's Jisho.
-    * This was replaced with manual copy and paste of the parsed text. See reason in [Footnotes](#footnotes).
-* [ ] Implement a Japanese morphological analyzer and break up input into dictionary words
-* [ ] Allow user to browse words in front end, similar to Lorenzi's Jisho.
+- [x] Allow user to paste or upload images.
+- [x] Parse text out of screenshots
+- [x] Feed text into an available online dictionary such as Lorenzi's Jisho.
+  - This was replaced with manual copy and paste of the parsed text. See reason in [Footnotes](#footnotes).
+- [ ] Implement a Japanese morphological analyzer and break up input into dictionary words
+- [ ] Allow user to browse words in front end, similar to Lorenzi's Jisho.
 
 ## Feature Wishlist
 
 See [GitHub issues tagged `enhancement`.](https://github.com/Goluxas/jp-image-to-dict/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
+
+## Usage
+
+### Backend
+
+In the root project directory, `uvicorn backend.main:app`. (If not in the root directory, relative imports don't work.)
+
+### Frontend
+
+Deployed to GitHub Pages at https://goluxas.github.io/jp-image-to-dict/
 
 ## Footnotes
 
